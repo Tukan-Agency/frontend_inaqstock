@@ -1,0 +1,1094 @@
+[
+  {
+    "code": "BD",
+    "name": "Bangladesh",
+    "flag": "🇧🇩",
+    "ext": "+880",
+    "currency": "BDT"
+  },
+  {
+    "code": "DE",
+    "name": "Alemania",
+    "flag": "🇩🇪",
+    "ext": "+49",
+    "currency": "EUR"
+  },
+  {
+    "code": "BF",
+    "name": "Burkina Faso",
+    "flag": "🇧🇫",
+    "ext": "+226",
+    "currency": "XOF"
+  },
+  {
+    "code": "BG",
+    "name": "Bulgaria",
+    "flag": "🇧🇬",
+    "ext": "+359",
+    "currency": "BGN"
+  },
+  {
+    "code": "BA",
+    "name": "Bosnia y Herzegovina",
+    "flag": "🇧🇦",
+    "ext": "+387",
+    "currency": "BAM"
+  },
+  {
+    "code": "BB",
+    "name": "Barbados",
+    "flag": "🇧🇧",
+    "ext": "+1-246",
+    "currency": "BBD"
+  },
+  {
+    "code": "PF",
+    "name": "Polinesia Francesa",
+    "flag": "🇵🇫",
+    "ext": "+689",
+    "currency": "XPF"
+  },
+  {
+    "code": "BM",
+    "name": "Bermudas",
+    "flag": "🇧🇲",
+    "ext": "+1-441",
+    "currency": "BMD"
+  },
+  {
+    "code": "BN",
+    "name": "Brunei",
+    "flag": "🇧🇳",
+    "ext": "+673",
+    "currency": "BND"
+  },
+  {
+    "code": "BO",
+    "name": "Bolivia",
+    "flag": "🇧🇴",
+    "ext": "+591",
+    "currency": "BOB"
+  },
+  {
+    "code": "BH",
+    "name": "Baréin",
+    "flag": "🇧🇭",
+    "ext": "+973",
+    "currency": "BHD"
+  },
+  {
+    "code": "BI",
+    "name": "Burundi",
+    "flag": "🇧🇮",
+    "ext": "+257",
+    "currency": "BIF"
+  },
+  {
+    "code": "BT",
+    "name": "Bután",
+    "flag": "🇧🇹",
+    "ext": "+975",
+    "currency": "BTN"
+  },
+  {
+    "code": "JM",
+    "name": "Jamaica",
+    "flag": "🇯🇲",
+    "ext": "+1-876",
+    "currency": "JMD"
+  },
+  {
+    "code": "NO",
+    "name": "Noruega",
+    "flag": "🇳🇴",
+    "ext": "+47",
+    "currency": "NOK"
+  },
+  {
+    "code": "BW",
+    "name": "Botsuana",
+    "flag": "🇧🇼",
+    "ext": "+267",
+    "currency": "BWP"
+  },
+  {
+    "code": "WS",
+    "name": "Samoa",
+    "flag": "🇼🇸",
+    "ext": "+685",
+    "currency": "WST"
+  },
+  {
+    "code": "BR",
+    "name": "Brasil",
+    "flag": "🇧🇷",
+    "ext": "+55",
+    "currency": "BRL"
+  },
+  {
+    "code": "BS",
+    "name": "Bahamas",
+    "flag": "🇧🇸",
+    "ext": "+1-242",
+    "currency": "BSD"
+  },
+  {
+    "code": "GB",
+    "name": "Reino Unido",
+    "flag": "🇬🇧",
+    "ext": "+44",
+    "currency": "GBP"
+  },
+  {
+    "code": "BY",
+    "name": "Bielorrusia",
+    "flag": "🇧🇾",
+    "ext": "+375",
+    "currency": "BYR"
+  },
+  {
+    "code": "BZ",
+    "name": "Belice",
+    "flag": "🇧🇿",
+    "ext": "+501",
+    "currency": "BZD"
+  },
+  {
+    "code": "RU",
+    "name": "Rusia",
+    "flag": "🇷🇺",
+    "ext": "+7",
+    "currency": "RUB"
+  },
+  {
+    "code": "RW",
+    "name": "Ruanda",
+    "flag": "🇷🇼",
+    "ext": "+250",
+    "currency": "RWF"
+  },
+  {
+    "code": "RS",
+    "name": "Serbia",
+    "flag": "🇷🇸",
+    "ext": "+381",
+    "currency": "RSD"
+  },
+  {
+    "code": "TM",
+    "name": "Turkmenistán",
+    "flag": "🇹🇲",
+    "ext": "+993",
+    "currency": "TMT"
+  },
+  {
+    "code": "TJ",
+    "name": "Tayikistán",
+    "flag": "🇹🇯",
+    "ext": "+992",
+    "currency": "TJS"
+  },
+  {
+    "code": "RO",
+    "name": "Rumania",
+    "flag": "🇷🇴",
+    "ext": "+40",
+    "currency": "RON"
+  },
+  {
+    "code": "NZ",
+    "name": "Nueva Zelanda",
+    "flag": "🇳🇿",
+    "ext": "+64",
+    "currency": "NZD"
+  },
+  {
+    "code": "GT",
+    "name": "Guatemala",
+    "flag": "🇬🇹",
+    "ext": "+502",
+    "currency": "GTQ"
+  },
+  {
+    "code": "CF",
+    "name": "República Centroafricana",
+    "flag": "🇨🇫",
+    "ext": "+236",
+    "currency": "XAF"
+  },
+  {
+    "code": "JP",
+    "name": "Japón",
+    "flag": "🇯🇵",
+    "ext": "+81",
+    "currency": "JPY"
+  },
+  {
+    "code": "GY",
+    "name": "Guyana",
+    "flag": "🇬🇾",
+    "ext": "+592",
+    "currency": "GYD"
+  },
+  {
+    "code": "GE",
+    "name": "Georgia",
+    "flag": "🇬🇪",
+    "ext": "+995",
+    "currency": "GEL"
+  },
+  {
+    "code": "DM",
+    "name": "Dominica",
+    "flag": "🇩🇲",
+    "ext": "+1-767",
+    "currency": "XCD"
+  },
+  {
+    "code": "GN",
+    "name": "Guinea",
+    "flag": "🇬🇳",
+    "ext": "+224",
+    "currency": "GNF"
+  },
+  {
+    "code": "GM",
+    "name": "Gambia",
+    "flag": "🇬🇲",
+    "ext": "+220",
+    "currency": "GMD"
+  },
+  {
+    "code": "DK",
+    "name": "Dinamarca",
+    "flag": "🇩🇰",
+    "ext": "+45",
+    "currency": "DKK"
+  },
+  {
+    "code": "GI",
+    "name": "Gibraltar",
+    "flag": "🇬🇮",
+    "ext": "+350",
+    "currency": "GIP"
+  },
+  {
+    "code": "GH",
+    "name": "Ghana",
+    "flag": "🇬🇭",
+    "ext": "+233",
+    "currency": "GHS"
+  },
+  {
+    "code": "OM",
+    "name": "Omán",
+    "flag": "🇴🇲",
+    "ext": "+968",
+    "currency": "OMR"
+  },
+  {
+    "code": "TN",
+    "name": "Túnez",
+    "flag": "🇹🇳",
+    "ext": "+216",
+    "currency": "TND"
+  },
+  {
+    "code": "JO",
+    "name": "Jordania",
+    "flag": "🇯🇴",
+    "ext": "+962",
+    "currency": "JOD"
+  },
+  {
+    "code": "HR",
+    "name": "Croacia",
+    "flag": "🇭🇷",
+    "ext": "+385",
+    "currency": "HRK"
+  },
+  {
+    "code": "HT",
+    "name": "Haití",
+    "flag": "🇭🇹",
+    "ext": "+509",
+    "currency": "HTG"
+  },
+  {
+    "code": "HU",
+    "name": "Hungría",
+    "flag": "🇭🇺",
+    "ext": "+36",
+    "currency": "HUF"
+  },
+  {
+    "code": "HK",
+    "name": "Hong Kong",
+    "flag": "🇭🇰",
+    "ext": "+852",
+    "currency": "HKD"
+  },
+  {
+    "code": "HN",
+    "name": "Honduras",
+    "flag": "🇭🇳",
+    "ext": "+504",
+    "currency": "HNL"
+  },
+  {
+    "code": "AU",
+    "name": "Australia",
+    "flag": "🇦🇺",
+    "ext": "+61",
+    "currency": "AUD"
+  },
+  {
+    "code": "VE",
+    "name": "Venezuela",
+    "flag": "🇻🇪",
+    "ext": "+58",
+    "currency": "VEF"
+  },
+  {
+    "code": "IL",
+    "name": "Israel",
+    "flag": "🇮🇱",
+    "ext": "+972",
+    "currency": "ILS"
+  },
+  {
+    "code": "PY",
+    "name": "Paraguay",
+    "flag": "🇵🇾",
+    "ext": "+595",
+    "currency": "PYG"
+  },
+  {
+    "code": "IQ",
+    "name": "Irak",
+    "flag": "🇮🇶",
+    "ext": "+964",
+    "currency": "IQD"
+  },
+  {
+    "code": "PA",
+    "name": "Panamá",
+    "flag": "🇵🇦",
+    "ext": "+507",
+    "currency": "PAB"
+  },
+  {
+    "code": "PG",
+    "name": "Papúa Nueva Guinea",
+    "flag": "🇵🇬",
+    "ext": "+675",
+    "currency": "PGK"
+  },
+  {
+    "code": "PE",
+    "name": "Perú",
+    "flag": "🇵🇪",
+    "ext": "+51",
+    "currency": "PEN"
+  },
+  {
+    "code": "PK",
+    "name": "Pakistán",
+    "flag": "🇵🇰",
+    "ext": "+92",
+    "currency": "PKR"
+  },
+  {
+    "code": "PH",
+    "name": "Filipinas",
+    "flag": "🇵🇭",
+    "ext": "+63",
+    "currency": "PHP"
+  },
+  {
+    "code": "PL",
+    "name": "Polonia",
+    "flag": "🇵🇱",
+    "ext": "+48",
+    "currency": "PLN"
+  },
+  {
+    "code": "ZM",
+    "name": "Zambia",
+    "flag": "🇿🇲",
+    "ext": "+260",
+    "currency": "ZMK"
+  },
+  {
+    "code": "MA",
+    "name": "Marruecos",
+    "flag": "🇲🇦",
+    "ext": "+212",
+    "currency": "MAD"
+  },
+  {
+    "code": "EG",
+    "name": "Egipto",
+    "flag": "🇪🇬",
+    "ext": "+20",
+    "currency": "EGP"
+  },
+  {
+    "code": "ZA",
+    "name": "Sudáfrica",
+    "flag": "🇿🇦",
+    "ext": "+27",
+    "currency": "ZAR"
+  },
+  {
+    "code": "VN",
+    "name": "Vietnam",
+    "flag": "🇻🇳",
+    "ext": "+84",
+    "currency": "VND"
+  },
+  {
+    "code": "SB",
+    "name": "Islas Salomón",
+    "flag": "🇸🇧",
+    "ext": "+677",
+    "currency": "SBD"
+  },
+  {
+    "code": "ET",
+    "name": "Etiopía",
+    "flag": "🇪🇹",
+    "ext": "+251",
+    "currency": "ETB"
+  },
+  {
+    "code": "SO",
+    "name": "Somalia",
+    "flag": "🇸🇴",
+    "ext": "+252",
+    "currency": "SOS"
+  },
+  {
+    "code": "ZW",
+    "name": "Zimbabue",
+    "flag": "🇿🇼",
+    "ext": "+263",
+    "currency": "ZWL"
+  },
+  {
+    "code": "SA",
+    "name": "Arabia Saudita",
+    "flag": "🇸🇦",
+    "ext": "+966",
+    "currency": "SAR"
+  },
+  {
+    "code": "ER",
+    "name": "Eritrea",
+    "flag": "🇪🇷",
+    "ext": "+291",
+    "currency": "ERN"
+  },
+  {
+    "code": "MD",
+    "name": "Moldavia",
+    "flag": "🇲🇩",
+    "ext": "+373",
+    "currency": "MDL"
+  },
+  {
+    "code": "MG",
+    "name": "Madagascar",
+    "flag": "🇲🇬",
+    "ext": "+261",
+    "currency": "MGA"
+  },
+  {
+    "code": "UZ",
+    "name": "Uzbekistán",
+    "flag": "🇺🇿",
+    "ext": "+998",
+    "currency": "UZS"
+  },
+  {
+    "code": "MM",
+    "name": "Myanmar",
+    "flag": "🇲🇲",
+    "ext": "+95",
+    "currency": "MMK"
+  },
+  {
+    "code": "MO",
+    "name": "Macao",
+    "flag": "🇲🇴",
+    "ext": "+853",
+    "currency": "MOP"
+  },
+  {
+    "code": "MN",
+    "name": "Mongolia",
+    "flag": "🇲🇳",
+    "ext": "+976",
+    "currency": "MNT"
+  },
+  {
+    "code": "MK",
+    "name": "Macedonia del Norte",
+    "flag": "🇲🇰",
+    "ext": "+389",
+    "currency": "MKD"
+  },
+  {
+    "code": "MU",
+    "name": "Mauricio",
+    "flag": "🇲🇺",
+    "ext": "+230",
+    "currency": "MUR"
+  },
+  {
+    "code": "MW",
+    "name": "Malaui",
+    "flag": "🇲🇼",
+    "ext": "+265",
+    "currency": "MWK"
+  },
+  {
+    "code": "MV",
+    "name": "Maldivas",
+    "flag": "🇲🇻",
+    "ext": "+960",
+    "currency": "MVR"
+  },
+  {
+    "code": "MR",
+    "name": "Mauritania",
+    "flag": "🇲🇷",
+    "ext": "+222",
+    "currency": "MRO"
+  },
+  {
+    "code": "UG",
+    "name": "Uganda",
+    "flag": "🇺🇬",
+    "ext": "+256",
+    "currency": "UGX"
+  },
+  {
+    "code": "TZ",
+    "name": "Tanzania",
+    "flag": "🇹🇿",
+    "ext": "+255",
+    "currency": "TZS"
+  },
+  {
+    "code": "MY",
+    "name": "Malasia",
+    "flag": "🇲🇾",
+    "ext": "+60",
+    "currency": "MYR"
+  },
+  {
+    "code": "MX",
+    "name": "México",
+    "flag": "🇲🇽",
+    "ext": "+52",
+    "currency": "MXN"
+  },
+  {
+    "code": "SH",
+    "name": "Santa Elena",
+    "flag": "🇸🇭",
+    "ext": "+290",
+    "currency": "SHP"
+  },
+  {
+    "code": "FJ",
+    "name": "Fiyi",
+    "flag": "🇫🇯",
+    "ext": "+679",
+    "currency": "FJD"
+  },
+  {
+    "code": "FK",
+    "name": "Islas Malvinas",
+    "flag": "🇫🇰",
+    "ext": "+500",
+    "currency": "FKP"
+  },
+  {
+    "code": "NI",
+    "name": "Nicaragua",
+    "flag": "🇳🇮",
+    "ext": "+505",
+    "currency": "NIO"
+  },
+  {
+    "code": "NA",
+    "name": "Namibia",
+    "flag": "🇳🇦",
+    "ext": "+264",
+    "currency": "NAD"
+  },
+  {
+    "code": "VU",
+    "name": "Vanuatu",
+    "flag": "🇻🇺",
+    "ext": "+678",
+    "currency": "VUV"
+  },
+  {
+    "code": "NG",
+    "name": "Nigeria",
+    "flag": "🇳🇬",
+    "ext": "+234",
+    "currency": "NGN"
+  },
+  {
+    "code": "NP",
+    "name": "Nepal",
+    "flag": "🇳🇵",
+    "ext": "+977",
+    "currency": "NPR"
+  },
+  {
+    "code": "CH",
+    "name": "Suiza",
+    "flag": "🇨🇭",
+    "ext": "+41",
+    "currency": "CHF"
+  },
+  {
+    "code": "CO",
+    "name": "Colombia",
+    "flag": "🇨🇴",
+    "ext": "+57",
+    "currency": "COP"
+  },
+  {
+    "code": "CN",
+    "name": "China",
+    "flag": "🇨🇳",
+    "ext": "+86",
+    "currency": "CNY"
+  },
+  {
+    "code": "CL",
+    "name": "Chile",
+    "flag": "🇨🇱",
+    "ext": "+56",
+    "currency": "CLP"
+  },
+  {
+    "code": "CA",
+    "name": "Canadá",
+    "flag": "🇨🇦",
+    "ext": "+1",
+    "currency": "CAD"
+  },
+  {
+    "code": "CD",
+    "name": "República Democrática del Congo",
+    "flag": "🇨🇩",
+    "ext": "+243",
+    "currency": "CDF"
+  },
+  {
+    "code": "CZ",
+    "name": "República Checa",
+    "flag": "🇨🇿",
+    "ext": "+420",
+    "currency": "CZK"
+  },
+  {
+    "code": "CR",
+    "name": "Costa Rica",
+    "flag": "🇨🇷",
+    "ext": "+506",
+    "currency": "CRC"
+  },
+  {
+    "code": "CW",
+    "name": "Curazao",
+    "flag": "🇨🇼",
+    "ext": "+599",
+    "currency": "ANG"
+  },
+  {
+    "code": "CV",
+    "name": "Cabo Verde",
+    "flag": "🇨🇻",
+    "ext": "+238",
+    "currency": "CVE"
+  },
+  {
+    "code": "CU",
+    "name": "Cuba",
+    "flag": "🇨🇺",
+    "ext": "+53",
+    "currency": "CUP"
+  },
+  {
+    "code": "SZ",
+    "name": "Suazilandia",
+    "flag": "🇸🇿",
+    "ext": "+268",
+    "currency": "SZL"
+  },
+  {
+    "code": "SY",
+    "name": "Siria",
+    "flag": "🇸🇾",
+    "ext": "+963",
+    "currency": "SYP"
+  },
+  {
+    "code": "KG",
+    "name": "Kirguistán",
+    "flag": "🇰🇬",
+    "ext": "+996",
+    "currency": "KGS"
+  },
+  {
+    "code": "KE",
+    "name": "Kenia",
+    "flag": "🇰🇪",
+    "ext": "+254",
+    "currency": "KES"
+  },
+  {
+    "code": "SS",
+    "name": "Sudán del Sur",
+    "flag": "🇸🇸",
+    "ext": "+211",
+    "currency": "SSP"
+  },
+  {
+    "code": "SR",
+    "name": "Surinam",
+    "flag": "🇸🇷",
+    "ext": "+597",
+    "currency": "SRD"
+  },
+  {
+    "code": "KH",
+    "name": "Camboya",
+    "flag": "🇰🇭",
+    "ext": "+855",
+    "currency": "KHR"
+  },
+  {
+    "code": "KM",
+    "name": "Comoras",
+    "flag": "🇰🇲",
+    "ext": "+269",
+    "currency": "KMF"
+  },
+  {
+    "code": "ST",
+    "name": "Santo Tomé y Príncipe",
+    "flag": "🇸🇹",
+    "ext": "+239",
+    "currency": "STD"
+  },
+  {
+    "code": "KR",
+    "name": "Corea del Sur",
+    "flag": "🇰🇷",
+    "ext": "+82",
+    "currency": "KRW"
+  },
+  {
+    "code": "KP",
+    "name": "Corea del Norte",
+    "flag": "🇰🇵",
+    "ext": "+850",
+    "currency": "KPW"
+  },
+  {
+    "code": "KW",
+    "name": "Kuwait",
+    "flag": "🇰🇼",
+    "ext": "+965",
+    "currency": "KWD"
+  },
+  {
+    "code": "SL",
+    "name": "Sierra Leona",
+    "flag": "🇸🇱",
+    "ext": "+232",
+    "currency": "SLL"
+  },
+  {
+    "code": "SC",
+    "name": "Seychelles",
+    "flag": "🇸🇨",
+    "ext": "+248",
+    "currency": "SCR"
+  },
+  {
+    "code": "KZ",
+    "name": "Kazajistán",
+    "flag": "🇰🇿",
+    "ext": "+7",
+    "currency": "KZT"
+  },
+  {
+    "code": "KY",
+    "name": "Islas Caimán",
+    "flag": "🇰🇾",
+    "ext": "+1-345",
+    "currency": "KYD"
+  },
+  {
+    "code": "SG",
+    "name": "Singapur",
+    "flag": "🇸🇬",
+    "ext": "+65",
+    "currency": "SGD"
+  },
+  {
+    "code": "SE",
+    "name": "Suecia",
+    "flag": "🇸🇪",
+    "ext": "+46",
+    "currency": "SEK"
+  },
+  {
+    "code": "SD",
+    "name": "Sudán",
+    "flag": "🇸🇩",
+    "ext": "+249",
+    "currency": "SDG"
+  },
+  {
+    "code": "DO",
+    "name": "República Dominicana",
+    "flag": "🇩🇴",
+    "ext": "+1-809, +1-829, +1-849",
+    "currency": "DOP"
+  },
+  {
+    "code": "DJ",
+    "name": "Yibuti",
+    "flag": "🇩🇯",
+    "ext": "+253",
+    "currency": "DJF"
+  },
+  {
+    "code": "YE",
+    "name": "Yemen",
+    "flag": "🇾🇪",
+    "ext": "+967",
+    "currency": "YER"
+  },
+  {
+    "code": "DZ",
+    "name": "Argelia",
+    "flag": "🇩🇿",
+    "ext": "+213",
+    "currency": "DZD"
+  },
+  {
+    "code": "UY",
+    "name": "Uruguay",
+    "flag": "🇺🇾",
+    "ext": "+598",
+    "currency": "UYU"
+  },
+  {
+    "code": "LB",
+    "name": "Líbano",
+    "flag": "🇱🇧",
+    "ext": "+961",
+    "currency": "LBP"
+  },
+  {
+    "code": "LA",
+    "name": "Laos",
+    "flag": "🇱🇦",
+    "ext": "+856",
+    "currency": "LAK"
+  },
+  {
+    "code": "TW",
+    "name": "Taiwán",
+    "flag": "🇹🇼",
+    "ext": "+886",
+    "currency": "TWD"
+  },
+  {
+    "code": "TT",
+    "name": "Trinidad y Tobago",
+    "flag": "🇹🇹",
+    "ext": "+1-868",
+    "currency": "TTD"
+  },
+  {
+    "code": "TR",
+    "name": "Turquía",
+    "flag": "🇹🇷",
+    "ext": "+90",
+    "currency": "TRY"
+  },
+  {
+    "code": "LK",
+    "name": "Sri Lanka",
+    "flag": "🇱🇰",
+    "ext": "+94",
+    "currency": "LKR"
+  },
+  {
+    "code": "TO",
+    "name": "Tonga",
+    "flag": "🇹🇴",
+    "ext": "+676",
+    "currency": "TOP"
+  },
+  {
+    "code": "LT",
+    "name": "Lituania",
+    "flag": "🇱🇹",
+    "ext": "+370",
+    "currency": "LTL"
+  },
+  {
+    "code": "LR",
+    "name": "Liberia",
+    "flag": "🇱🇷",
+    "ext": "+231",
+    "currency": "LRD"
+  },
+  {
+    "code": "LS",
+    "name": "Lesoto",
+    "flag": "🇱🇸",
+    "ext": "+266",
+    "currency": "LSL"
+  },
+  {
+    "code": "TH",
+    "name": "Tailandia",
+    "flag": "🇹🇭",
+    "ext": "+66",
+    "currency": "THB"
+  },
+  {
+    "code": "LY",
+    "name": "Libia",
+    "flag": "🇱🇾",
+    "ext": "+218",
+    "currency": "LYD"
+  },
+  {
+    "code": "AE",
+    "name": "Emiratos Árabes Unidos",
+    "flag": "🇦🇪",
+    "ext": "+971",
+    "currency": "AED"
+  },
+  {
+    "code": "AF",
+    "name": "Afganistán",
+    "flag": "🇦🇫",
+    "ext": "+93",
+    "currency": "AFN"
+  },
+  {
+    "code": "IS",
+    "name": "Islandia",
+    "flag": "🇮🇸",
+    "ext": "+354",
+    "currency": "ISK"
+  },
+  {
+    "code": "IR",
+    "name": "Irán",
+    "flag": "🇮🇷",
+    "ext": "+98",
+    "currency": "IRR"
+  },
+  {
+    "code": "AM",
+    "name": "Armenia",
+    "flag": "🇦🇲",
+    "ext": "+374",
+    "currency": "AMD"
+  },
+  {
+    "code": "AL",
+    "name": "Albania",
+    "flag": "🇦🇱",
+    "ext": "+355",
+    "currency": "ALL"
+  },
+  {
+    "code": "AO",
+    "name": "Angola",
+    "flag": "🇦🇴",
+    "ext": "+244",
+    "currency": "AOA"
+  },
+  {
+    "code": "US",
+    "name": "Estados Unidos",
+    "flag": "🇺🇸",
+    "ext": "+1",
+    "currency": "USD"
+  },
+  {
+    "code": "AR",
+    "name": "Argentina",
+    "flag": "🇦🇷",
+    "ext": "+54",
+    "currency": "ARS"
+  },
+  {
+    "code": "AW",
+    "name": "Aruba",
+    "flag": "🇦🇼",
+    "ext": "+297",
+    "currency": "AWG"
+  },
+  {
+    "code": "IN",
+    "name": "India",
+    "flag": "🇮🇳",
+    "ext": "+91",
+    "currency": "INR"
+  },
+  {
+    "code": "AZ",
+    "name": "Azerbaiyán",
+    "flag": "🇦🇿",
+    "ext": "+994",
+    "currency": "AZN"
+  },
+  {
+    "code": "ID",
+    "name": "Indonesia",
+    "flag": "🇮🇩",
+    "ext": "+62",
+    "currency": "IDR"
+  },
+  {
+    "code": "UA",
+    "name": "Ucrania",
+    "flag": "🇺🇦",
+    "ext": "+380",
+    "currency": "UAH"
+  },
+  {
+    "code": "QA",
+    "name": "Qatar",
+    "flag": "🇶🇦",
+    "ext": "+974",
+    "currency": "QAR"
+  },
+  {
+    "code": "MZ",
+    "name": "Mozambique",
+    "flag": "🇲🇿",
+    "ext": "+258",
+    "currency": "MZN"
+  }
+]
