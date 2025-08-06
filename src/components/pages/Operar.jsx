@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardBody } from "@heroui/card";
 import CandlestickChart from "../../components/objetos/CandlestickChart.jsx";
 import { useApi } from "../services/useApiData.js";
-import MarketSelector from "../objetos/MarketSelector.jsx";
+import MarketList from "../objetos/MarketList.jsx";
 
 export default function Operar() {
   const { session } = useSession();
@@ -34,17 +34,14 @@ export default function Operar() {
           {/* Primera fila de tarjetas */}
           <div className="flex flex-row gap-4">
             <div className="flex-[1]">
-              <Card className="min-h-[470px] border border-solid border-[#00689b9e]">
-                <CardBody>
-                  <MarketSelector
-                    onSelect={(symbol) => {
-                      // construir nueva URL según símbolo
-                      const newUrl = `https://api.polygon.io/v2/aggs/ticker/X:${symbol}/range/1/day/2025-06-01/2025-06-30?apiKey=...`;
-                      refetch(newUrl);
-                    }}
-                  />
-                </CardBody>
-              </Card>
+              <div className="flex-[1]">
+                <MarketList
+                  onSelect={(symbol) => {
+                    const newUrl = `https://api.polygon.io/v2/aggs/ticker/X:${symbol}/range/1/day/2025-06-01/2025-06-30?apiKey=...`;
+                    refetch(newUrl);
+                  }}
+                />
+              </div>
             </div>
 
             <div className="flex-[3]">
