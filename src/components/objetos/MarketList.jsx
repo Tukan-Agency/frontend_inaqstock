@@ -10,12 +10,11 @@ import {
   addToast,
   Skeleton,
 } from "@heroui/react";
-
 import { Icon } from "@iconify/react";
 import MarketTradePanel from "./MarketTradePanel";
 import { polygonService } from "../services/polygonService";
 
-export default function MarketList() {
+export default function MarketList({ onSelect }) {
   const [searchText, setSearchText] = useState("");
   const [selectedTab, setSelectedTab] = useState("favorites");
   const [expandedMarket, setExpandedMarket] = useState(null);
@@ -141,8 +140,10 @@ export default function MarketList() {
     });
   };
 
+  // <-- Aquí agregamos la llamada a onSelect
   const handleMarketClick = (symbol) => {
     setExpandedMarket(expandedMarket === symbol ? null : symbol);
+    if (onSelect) onSelect(symbol); // Notifica al padre
   };
 
   const filteredMarkets = markets.filter(

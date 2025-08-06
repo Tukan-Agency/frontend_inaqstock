@@ -2,14 +2,16 @@ import { useSession } from "../../hooks/use-session.jsx";
 import { useState } from "react";
 import Nav from "../navbar.jsx";
 import { useNavigate } from "react-router-dom";
-import { Card, CardBody, Select, SelectItem } from "@heroui/react";
+import { Card, CardBody, Select, SelectItem, CircularProgress } from "@heroui/react";
 import CandlestickChart from "../../components/objetos/CandlestickChart.jsx";
 import useCachedApi from "../services/useCachedApi.js";
 import MarketList from "../../components/objetos/MarketList.jsx";
 import { Icon } from "@iconify/react";
 
 const TIME_RANGES = [
-
+  { key: "M1", label: "M1", range: { multiplier: 1, timespan: "minute" } },
+  { key: "M5", label: "M5", range: { multiplier: 5, timespan: "minute" } },
+  { key: "M15", label: "M15", range: { multiplier: 15, timespan: "minute" } },
   { key: "M30", label: "M30", range: { multiplier: 30, timespan: "minute" } },
   { key: "H1", label: "H1", range: { multiplier: 1, timespan: "hour" } },
   { key: "H4", label: "H4", range: { multiplier: 4, timespan: "hour" } },
@@ -30,7 +32,7 @@ export default function Operar() {
 
   const [selectedSymbol, setSelectedSymbol] = useState("BTCUSD");
   const [chartType, setChartType] = useState("candlestick");
-  const [selectedRange, setSelectedRange] = useState(TIME_RANGES[4]); // D1 por defecto
+  const [selectedRange, setSelectedRange] = useState(TIME_RANGES[6]); // D1 por defecto
   const [startDate, setStartDate] = useState("2025-01-01");
   const [endDate, setEndDate] = useState("2025-12-31");
 
@@ -39,6 +41,7 @@ export default function Operar() {
 
   const { data, loading, error } = useCachedApi(url);
 
+  // Procesar datos solo si ya están cargados
   const ohlcData = data?.results
     ? [...data.results].sort((a, b) => a.t - b.t)
     : [];
@@ -51,7 +54,24 @@ export default function Operar() {
   const handleMarketSelect = (symbol) => {
     setSelectedSymbol(symbol);
   };
-  console.log("url", url);
+
+  // Si está cargando, muestra spinner grande y oculta todo el chart/filtros
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[100vh] bg-background text-foreground">
+        <Nav />
+        <div className="mt-24 flex flex-col items-center gap-4">
+          <CircularProgress
+            size="lg"
+            strokeWidth={5}
+            aria-label="Cargando datos del mercado..."
+            color="primary"
+          />
+          <span className="text-lg font-medium text-primary">Cargando datos del mercado...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="text-foreground bg-background h-[100vh]">
@@ -128,7 +148,7 @@ export default function Operar() {
                   ) : (
                     <CandlestickChart
                       data={ohlcData}
-                      loading={loading}
+                      loading={false} // Ya controlas loading aquí
                       title={`${selectedSymbol} (${selectedRange.label})`}
                       height={460}
                       showToolbar={false}

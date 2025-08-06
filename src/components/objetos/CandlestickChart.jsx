@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import Chart from "react-apexcharts";
 import { CircularProgress } from "@heroui/progress";
+import { addToast } from "@heroui/react";
 
 export default function CandlestickChart({ 
   data = [], 
@@ -12,22 +13,20 @@ export default function CandlestickChart({
     upward: "#0b827b",
     downward: "#e74c3c"
   },
-  theme = "dark"
+  theme = "dark",
+  chartType = "candlestick", // <- nuevo prop
 }) {
   // Memoizamos la serie para evitar re-renderizados innecesarios
   const series = useMemo(() => [
-    {
-      data: data.map((d) => ({
-        x: d.t,
-        y: [d.o, d.h, d.l, d.c],
-      })),
-    },
-  ], [data]);
+    chartType === "candlestick"
+      ? { data: data.map((d) => ({ x: d.t, y: [d.o, d.h, d.l, d.c] })) }
+      : { data: data.map((d) => ({ x: d.t, y: d.c })) },
+  ], [data, chartType]);
 
   // Memoizamos las opciones del gráfico
   const options = useMemo(() => ({
     chart: {
-      type: "candlestick",
+      type: chartType,
       height: height,
       toolbar: { show: showToolbar },
     },
@@ -65,15 +64,17 @@ export default function CandlestickChart({
         highlightDataSeries: false,
       },
     },
-    plotOptions: {
-      candlestick: {
-        colors: {
-          upward: colors.upward,
-          downward: colors.downward,
-        },
-      },
-    },
-  }), [title, height, showToolbar, colors, theme]);
+    plotOptions: chartType === "candlestick"
+      ? {
+          candlestick: {
+            colors: {
+              upward: colors.upward,
+              downward: colors.downward,
+            },
+          },
+        }
+      : {},
+  }), [title, height, showToolbar, colors, theme, chartType]);
 
   // Mostrar loading
   if (loading) {
@@ -89,9 +90,15 @@ export default function CandlestickChart({
 
   // No hay datos
   if (!data || data.length === 0) {
+    addToast?.({
+      title: "Sin datos",
+      description: "No hay datos disponibles para este mercado en el rango seleccionado.",
+      color: "Warning",
+      duration: 3500,
+    });
     return (
       <div className="w-full h-full flex items-center justify-center text-foreground/60">
-        <p>No hay datos disponibles</p>
+        <p>No hay datos disponibles para este mercado en el rango seleccionado.</p>
       </div>
     );
   }
@@ -100,7 +107,7 @@ export default function CandlestickChart({
     <Chart
       options={options}
       series={series}
-      type="candlestick"
+      type={chartType}
       height="100%"
       width="100%"
     />

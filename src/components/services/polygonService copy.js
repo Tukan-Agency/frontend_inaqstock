@@ -7,7 +7,7 @@ export const polygonService = {
  getAllMarkets: async (onProgress = () => {}) => {
     try {
       let allResults = [];
-      let nextUrl = `${BASE_URL}/reference/tickers?active=true&limit=1000&apiKey=${API_KEY}`;
+      let nextUrl = `${BASE_URL}/reference/tickers?market=stocks&active=true&order=asc&limit=100&sort=ticker&apiKey=${API_KEY}`;
       let page = 1;
 
       while (nextUrl) {
