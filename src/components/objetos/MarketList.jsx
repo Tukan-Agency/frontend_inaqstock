@@ -61,13 +61,13 @@ export default function MarketList({ onSelect }) {
         setLoading(true);
         const data = await polygonService.getMarketsList();
 
-        const formattedMarkets = data.results.map((market) => ({
-          symbol: market.ticker,
-          name: market.name,
-          type: market.type,
-          market: market.market,
-          exchange: market.primary_exchange,
-          isFavorite: favorites.includes(market.ticker),
+        const formattedMarkets = (data.tickers || []).map((t) => ({
+          symbol: t.ticker, // ej. "X:STXUSD"
+          name: t.ticker.replace(/^X:/, ""), // si no hay nombre, usar ticker limpio
+          type: "crypto",
+          market: "crypto",
+          exchange: "CRYPTO",
+          isFavorite: favorites.includes(t.ticker),
         }));
 
         setMarkets(formattedMarkets);

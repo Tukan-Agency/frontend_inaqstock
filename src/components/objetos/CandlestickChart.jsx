@@ -15,12 +15,11 @@ export default function CandlestickChart({
   },
   theme = "dark",
   chartType = "candlestick",
-  // Opciones nuevas para rendimiento + animación
-  enableBrush = true,         // muestra mini-gráfico inferior para recortar ventana
-  maxPoints = 600,            // limita puntos renderizados (mejor perf con animación)
-  initialRange = 200,         // cantidad de velas visibles al inicio
+  enableBrush = true,         // mini-gráfico inferior para recortar ventana
+  maxPoints = 600,            // puntos máximos a renderizar
+  initialRange = 200,         // cantidad inicial de velas visibles
 }) {
-  // Recorta el dataset para no renderizar miles de puntos
+  // Recorta el dataset
   const sliced = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return data.length > maxPoints ? data.slice(-maxPoints) : data;
@@ -35,7 +34,6 @@ export default function CandlestickChart({
         },
       ];
     }
-    // línea/área: usar cierre
     return [
       {
         data: sliced.map((d) => ({ x: d.t, y: d.c })),
@@ -43,7 +41,7 @@ export default function CandlestickChart({
     ];
   }, [sliced, chartType]);
 
-  // Rango inicial de la ventana visible (para el brush/selection)
+  // Rango inicial para el brush
   const { initMin, initMax } = useMemo(() => {
     if (!sliced.length) return { initMin: 0, initMax: 0 };
     const last = sliced.length;
@@ -51,15 +49,15 @@ export default function CandlestickChart({
     return { initMin: sliced[minIndex].t, initMax: sliced[last - 1].t };
   }, [sliced, initialRange]);
 
-  // Animaciones "ligeras" para conservar transiciones sin penalizar tanto
+  // Animaciones: desactivar solo si es candlestick
   const animations = useMemo(
     () => ({
-      enabled: true,
+      enabled: chartType !== "candlestick", // sin animación para velas
       speed: 300,
       animateGradually: { enabled: false },
-      dynamicAnimation: { enabled: true, speed: 250 },
+      dynamicAnimation: { enabled: chartType !== "candlestick", speed: 250 },
     }),
-    []
+    [chartType]
   );
 
   // Opciones del gráfico principal
@@ -115,10 +113,7 @@ export default function CandlestickChart({
         chartType === "candlestick"
           ? { width: 1 }
           : { width: 1, curve: "straight" },
-      markers:
-        chartType === "candlestick"
-          ? { size: 0 }
-          : { size: 0 }, // sin marcadores para mejor perf
+      markers: { size: 0 },
       plotOptions:
         chartType === "candlestick"
           ? {
@@ -135,17 +130,14 @@ export default function CandlestickChart({
     [chartType, height, showToolbar, animations, title, theme, colors]
   );
 
-  // Opciones del gráfico "brush" (mini-rango inferior)
+  // Opciones del brush
   const brushSeries = useMemo(
     () => [
       {
-        data:
-          chartType === "candlestick"
-            ? sliced.map((d) => ({ x: d.t, y: d.c })) // usa close para algo liviano
-            : sliced.map((d) => ({ x: d.t, y: d.c })),
+        data: sliced.map((d) => ({ x: d.t, y: d.c })), // solo cierre para optimizar
       },
     ],
-    [sliced, chartType]
+    [sliced]
   );
 
   const brushOptions = useMemo(
@@ -183,7 +175,7 @@ export default function CandlestickChart({
     );
   }
 
-  // No data
+  // Sin datos
   if (!sliced || sliced.length === 0) {
     addToast?.({
       title: "Sin datos",

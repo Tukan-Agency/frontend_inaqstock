@@ -35,7 +35,7 @@ export default function Operar() {
   const [endDate, setEndDate] = useState("2025-12-31");
 
   // Construye la URL según los filtros
-  const url = `https://api.polygon.io/v2/aggs/ticker/X:${selectedSymbol}/range/${selectedRange.range.multiplier}/${selectedRange.range.timespan}/${startDate}/${endDate}?apiKey=MF98h8vorj239xqQzHGEgjZ4JefrmFOj`;
+  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/${selectedRange.range.multiplier}/${selectedRange.range.timespan}/${startDate}/${endDate}?apiKey=MF98h8vorj239xqQzHGEgjZ4JefrmFOj`;
 
   const { data, loading, error } = useCachedApi(url);
 
