@@ -107,6 +107,7 @@ export default function CandlestickChart({
         shared: false,
         intersect: true,
       },
+      
       dataLabels: { enabled: false },
       grid: { strokeDashArray: 3 },
       stroke:

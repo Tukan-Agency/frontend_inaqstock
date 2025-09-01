@@ -17,22 +17,47 @@ export default function MarketTradePanel({ market }) {
   };
 
   const sellPrice = (parseFloat(market.price) - 0.41).toFixed(2);
+  
+  const executeTrade = (type) => {
+    const tradeData = {
+      symbol: market.symbol,
+      volume: quantity,
+      type: type,
+      openPrice: type === 'Compra' ? market.price : sellPrice,
+      currentPrice: market.price,
+      openTime: new Date().toISOString(),
+      tp: '-',
+      sl: '-',
+      swap: 0.00,
+      commission: 0.00
+    };
+
+    // Aquí podemos emitir un evento personalizado
+    const tradeEvent = new CustomEvent('trade-executed', {
+      detail: tradeData
+    });
+    window.dispatchEvent(tradeEvent);
+  };
 
   return (
     <div className="p-3 bg-default-50">
       {/* Botones de Compra/Venta */}
       <div className="flex gap-2 mb-4">
-        
-        <Button className="flex-1 bg-[#cb2e47] text-white hover:bg-[#cb2e47]/90 h-14">
+        <Button 
+          className="flex-1 bg-[#cb2e47] text-white hover:bg-[#cb2e47]/90 h-14"
+          onClick={() => executeTrade('Venta')}
+        >
           <span>
             <b>VENTA</b> <br />
             {sellPrice}
           </span>
         </Button>
-        <Button className="flex-1 bg-[#06726b] text-white hover:bg-[#06726b]/90 h-14">
+        <Button 
+          className="flex-1 bg-[#06726b] text-white hover:bg-[#06726b]/90 h-14"
+          onClick={() => executeTrade('Compra')}
+        >
           <span>
-            <b>COMPRA </b>
-            <br />
+            <b>COMPRA</b> <br />
             {market.price}
           </span>
         </Button>
@@ -67,16 +92,6 @@ export default function MarketTradePanel({ market }) {
           <Icon icon="material-symbols:add" />
         </Button>
       </div>
-
-      {/* Botón de orden avanzada */}
-      <Button 
-        size="sm"
-        variant="light"
-        className="w-full flex items-center gap-2 text-default-500 hover:text-default-700"
-      >
-        <Icon icon="material-symbols:settings-outline" />
-        Orden avanzada
-      </Button>
     </div>
   );
 }

@@ -1,6 +1,6 @@
-import { useSession } from "../../hooks/use-session.jsx";
-import { useState, useEffect } from "react";
-import Nav from "../navbar.jsx";
+import { useSession } from "../../../hooks/use-session.jsx";
+import { useState } from "react";
+import Nav from "../../navbar.jsx";
 import { useNavigate } from "react-router-dom";
 import { Card, CardBody, Select, SelectItem } from "@heroui/react";
 import {
@@ -10,11 +10,10 @@ import {
   DropdownItem,
   Button,
 } from "@heroui/react";
-import CandlestickChart from "../../components/objetos/CandlestickChart.jsx";
-import useCachedApi from "../services/useCachedApi.js";
-import MarketList from "../../components/objetos/MarketList.jsx";
+import CandlestickChart from "../../objetos/CandlestickChart.jsx";
+import useCachedApi from "../../services/useCachedApi.js";
+import MarketList from "../../objetos/MarketList.jsx";
 import { Icon } from "@iconify/react";
-import TradingTabs from "../objetos/TradingTabs.jsx";
 
 const TIME_RANGES = [
   { key: "M30", label: "M30", range: { multiplier: 30, timespan: "minute" } },
@@ -36,8 +35,6 @@ const CHART_TYPES = [
 ];
 
 export default function Operar() {
-  const [openPositions, setOpenPositions] = useState([]);
-
   const { session } = useSession();
   const navigate = useNavigate();
 
@@ -65,19 +62,6 @@ export default function Operar() {
     setSelectedSymbol(symbol);
   };
   console.log("url", url);
- // En Operar.jsx
-useEffect(() => {
-  const handleTrade = (event) => {
-    const tradeData = event.detail;
-    setOpenPositions(prev => [...prev, {
-      id: Math.random().toString(36).substr(2, 9),
-      ...tradeData
-    }]);
-  };
-
-  window.addEventListener('trade-executed', handleTrade);
-  return () => window.removeEventListener('trade-executed', handleTrade);
-}, []);
 
   return (
     <div className="text-foreground bg-background h-[100vh]">
@@ -152,31 +136,32 @@ useEffect(() => {
                       <DropdownMenu
                         aria-label="Tipo de gráfico"
                         selectionMode="single"
-                        selectedKey={selectedRange.key}
-                        onSelectionChange={(keySet) => {
-                          const key = Array.from(keySet)[0];
-                          const range = TIME_RANGES.find((r) => r.key === key);
-                          setSelectedRange(range);
-                        }}
+                         selectedKey={selectedRange.key}
+                      onSelectionChange={(keySet) => {
+                        const key = Array.from(keySet)[0];
+                        const range = TIME_RANGES.find((r) => r.key === key);
+                        setSelectedRange(range);
+                      }}
                       >
                         {TIME_RANGES.map((range) => (
                           <DropdownItem key={range.key} textValue={range.label}>
                             <div className="flex items-center gap-2">
-                              <span
-                                className={
-                                  range.key === selectedRange.key
-                                    ? "text-primary"
-                                    : ""
-                                }
-                              >
-                                {range.label}
-                              </span>
+                               <span
+                            className={
+                              range.key === selectedRange.key
+                                ? "text-primary"
+                                : ""
+                            }
+                          >
+                            {range.label}
+                          </span>
                             </div>
                           </DropdownItem>
                         ))}
                       </DropdownMenu>
                     </Dropdown>
                     {/* Botón rango de tiempo */}
+                   
                   </div>
                 </div>
                 {/* Chart */}
@@ -211,8 +196,7 @@ useEffect(() => {
             <div className="flex-[3]">
               <Card className="min-h-[350px] border border-solid border-[#00689b9e]">
                 <CardBody>
-                  <TradingTabs openPositions={openPositions} />
-
+                  <p></p>
                 </CardBody>
               </Card>
             </div>

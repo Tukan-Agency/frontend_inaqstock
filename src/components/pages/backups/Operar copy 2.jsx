@@ -1,10 +1,10 @@
-import { useSession } from "../../hooks/use-session.jsx";
-import Nav from "../navbar.jsx";
+import { useSession } from "../../../hooks/use-session.jsx";
+import Nav from "../../navbar.jsx";
 import { useNavigate } from "react-router-dom";
 import { Card, CardBody } from "@heroui/card";
-import CandlestickChart from "../../components/objetos/CandlestickChart.jsx";
-import { useApi } from "../services/useApiData.js";
-import MarketList from "../objetos/MarketList.jsx";
+import CandlestickChart from "../../objetos/CandlestickChart.jsx";
+import { useApi } from "../../services/useApiData.js";
+import MarketList from "../../objetos/MarketList.jsx";
 
 export default function Operar() {
   const { session } = useSession();

@@ -1,11 +1,11 @@
-import { useSession } from "../../hooks/use-session.jsx";
+import { useSession } from "../../../hooks/use-session.jsx";
 import { useState } from "react";
-import Nav from "../navbar.jsx";
+import Nav from "../../navbar.jsx";
 import { useNavigate } from "react-router-dom";
 import { Card, CardBody, Select, SelectItem, CircularProgress } from "@heroui/react";
-import CandlestickChart from "../../components/objetos/CandlestickChart.jsx";
-import useCachedApi from "../services/useCachedApi.js";
-import MarketList from "../../components/objetos/MarketList.jsx";
+import CandlestickChart from "../../objetos/CandlestickChart.jsx";
+import useCachedApi from "../../services/useCachedApi.js";
+import MarketList from "../../objetos/MarketList.jsx";
 import { Icon } from "@iconify/react";
 
 const TIME_RANGES = [
