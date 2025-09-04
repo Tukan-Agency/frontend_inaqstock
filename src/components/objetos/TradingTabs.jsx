@@ -1,4 +1,4 @@
-import { Tab, Tabs } from "@heroui/react"; // Cambiamos a HeroUI que es lo que estás usando
+import { Tab, Tabs } from "@heroui/react";
 import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import OpenPositionsTable from "./OpenPositionsTable";
@@ -18,13 +18,11 @@ export default function TradingTabs() {
   useEffect(() => {
     const handleTrade = async (event) => {
       try {
-        const tradeData = event.detail;
-        const savedPosition = await TradingService.savePosition(tradeData);
+        const savedPosition = event.detail;
         setOpenPositions(prev => [...prev, savedPosition]);
-        // Por ahora comentamos las notificaciones hasta resolver el problema
-        // toast.success(`Se ha abierto una posición en ${savedPosition.symbol}`);
+        console.log('Nueva posición agregada a la tabla:', savedPosition);
       } catch (error) {
-        console.error("No se pudo abrir la posición:", error);
+        console.error("Error al manejar el evento de trade:", error);
       }
     };
 

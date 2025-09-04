@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { TradingService } from "../services/tradingService";
 
 export default function MarketTradePanel({ market }) {
   const [quantity, setQuantity] = useState(0.01);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleQuantityChange = (increment) => {
     const newQuantity = Number((quantity + increment).toFixed(2));
@@ -18,25 +20,38 @@ export default function MarketTradePanel({ market }) {
 
   const sellPrice = (parseFloat(market.price) - 0.41).toFixed(2);
   
-  const executeTrade = (type) => {
-    const tradeData = {
-      symbol: market.symbol,
-      volume: quantity,
-      type: type,
-      openPrice: type === 'Compra' ? market.price : sellPrice,
-      currentPrice: market.price,
-      openTime: new Date().toISOString(),
-      tp: '-',
-      sl: '-',
-      swap: 0.00,
-      commission: 0.00
-    };
+  const executeTrade = async (type) => {
+    setIsLoading(true);
+    try {
+      const tradeData = {
+        symbol: market.symbol,
+        volume: quantity,
+        type: type,
+        openPrice: type === 'Compra' ? parseFloat(market.price) : parseFloat(sellPrice),
+        currentPrice: parseFloat(market.price),
+        openTime: new Date().toISOString(),
+        tp: '-',
+        sl: '-',
+        swap: 0.00,
+        commission: 0.00
+      };
 
-    // Aquí podemos emitir un evento personalizado
-    const tradeEvent = new CustomEvent('trade-executed', {
-      detail: tradeData
-    });
-    window.dispatchEvent(tradeEvent);
+      // Llamar directamente al servicio
+      const savedPosition = await TradingService.savePosition(tradeData);
+      
+      // Emitir evento para actualizar las tablas
+      const tradeEvent = new CustomEvent('trade-executed', {
+        detail: savedPosition
+      });
+      window.dispatchEvent(tradeEvent);
+      
+      console.log('Posición guardada exitosamente:', savedPosition);
+    } catch (error) {
+      console.error('Error al ejecutar trade:', error);
+      // Aquí puedes agregar una notificación de error si tienes un sistema de toast
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -46,6 +61,8 @@ export default function MarketTradePanel({ market }) {
         <Button 
           className="flex-1 bg-[#cb2e47] text-white hover:bg-[#cb2e47]/90 h-14"
           onClick={() => executeTrade('Venta')}
+          isLoading={isLoading}
+          isDisabled={isLoading}
         >
           <span>
             <b>VENTA</b> <br />
@@ -55,6 +72,8 @@ export default function MarketTradePanel({ market }) {
         <Button 
           className="flex-1 bg-[#06726b] text-white hover:bg-[#06726b]/90 h-14"
           onClick={() => executeTrade('Compra')}
+          isLoading={isLoading}
+          isDisabled={isLoading}
         >
           <span>
             <b>COMPRA</b> <br />
@@ -71,6 +90,7 @@ export default function MarketTradePanel({ market }) {
           variant="flat"
           onClick={() => handleQuantityChange(-0.01)}
           className="bg-default-100 rounded-lg w-8 h-8 min-w-8"
+          isDisabled={isLoading}
         >
           <Icon icon="material-symbols:remove" />
         </Button>
@@ -88,6 +108,7 @@ export default function MarketTradePanel({ market }) {
           variant="flat"
           onClick={() => handleQuantityChange(0.01)}
           className="bg-default-100 rounded-lg w-8 h-8 min-w-8"
+          isDisabled={isLoading}
         >
           <Icon icon="material-symbols:add" />
         </Button>
