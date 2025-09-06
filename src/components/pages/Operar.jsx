@@ -14,6 +14,7 @@ import CandlestickChart from "../../components/objetos/CandlestickChart.jsx";
 import useCachedApi from "../services/useCachedApi.js";
 import MarketList from "../../components/objetos/MarketList.jsx";
 import { Icon } from "@iconify/react";
+import MarketWidget from "../objetos/MarketWidget/MarketWidget.jsx";
 import TradingTabs from "../objetos/TradingTabs.jsx";
 
 const TIME_RANGES = [
@@ -204,7 +205,9 @@ useEffect(() => {
           <div className="flex flex-row gap-4">
             <div className="flex-[1]">
               <Card className="min-h-[350px] border border-solid border-[#00689b9e]">
-                <CardBody></CardBody>
+                <CardBody>
+                  <MarketWidget />
+                </CardBody>
               </Card>
             </div>
 
