@@ -14,7 +14,7 @@ import CandlestickChart from "../../components/objetos/CandlestickChart.jsx";
 import useCachedApi from "../services/useCachedApi.js";
 import MarketList from "../../components/objetos/MarketList.jsx";
 import { Icon } from "@iconify/react";
-import MarketWidget from "../objetos/MarketWidget/MarketWidget.jsx";
+import MarketWidget from "../objetos/MarketWidget/MarketWidget";
 import TradingTabs from "../objetos/TradingTabs.jsx";
 
 const TIME_RANGES = [

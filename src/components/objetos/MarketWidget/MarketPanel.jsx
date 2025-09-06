@@ -1,188 +1,136 @@
 import React, { useState, useEffect } from "react";
-import { Accordion, AccordionItem } from "@heroui/react";
+import { Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import axios from "axios";
 
-export default function SymbolInfoPanel({ symbol }) {
-  const [symbolData, setSymbolData] = useState({
-    name: "CFD basado en onzas troy de plata",
-    type: "CFD",
-    minPosition: 0.01,
-    pointSize: 0.001,
-    spread: { bid: -5.497, ask: 3.601 },
-    nominalValue: "204 835,00 USD",
-    pointValue: "5,00 USD",
-    leverage: "1: 100 (1,00%)",
-    marketHours: {
-      monday: [
-        { open: "00:00", close: "21:00" },
-        { open: "22:01", close: "23:59" }
-      ],
-      tuesday: [
-        { open: "00:00", close: "21:00" },
-        { open: "22:01", close: "23:59" }
-      ],
-      wednesday: [
-        { open: "00:00", close: "21:00" },
-        { open: "22:01", close: "23:59" }
-      ],
-      thursday: [
-        { open: "00:00", close: "21:00" },
-        { open: "22:01", close: "23:59" }
-      ],
-      friday: [
-        { open: "00:00", close: "20:55" }
-      ],
-      saturday: [],
-      sunday: [
-        { open: "22:01", close: "23:59" }
-      ],
-    },
-    sessionClosed: true
-  });
+export default function MarketPanel({ symbol }) {
+  const [loading, setLoading] = useState(true);
+  const [marketData, setMarketData] = useState(null);
 
-  // En un entorno real, cargaríamos esta información desde la API
   useEffect(() => {
-    const fetchSymbolData = async () => {
-      if (!symbol) return;
-      
+    const fetchMarketData = async () => {
+      setLoading(true);
       try {
-        // Aquí iría la llamada a la API real
-        // const response = await axios.get(`https://api.example.com/symbol/${symbol}`);
-        // setSymbolData(response.data);
+        const response = await axios.get(
+          `https://api.polygon.io/v2/aggs/ticker/${symbol}/prev?apiKey=MF98h8vorj239xqQzHGEgjZ4JefrmFOj`
+        );
+
+        if (response.data && response.data.results) {
+          const marketInfo = response.data.results[0];
+          setMarketData({
+            sentiment: {
+              positive: Math.random() * 100, // Simulando datos de sentimiento
+              negative: Math.random() * 100,
+            },
+            change: {
+              daily: ((marketInfo.c - marketInfo.o) / marketInfo.o) * 100,
+              weekly: Math.random() * 5, // Simulando datos semanales
+              monthly: Math.random() * 10, // Simulando datos mensuales
+            },
+            range: {
+              daily: { low: marketInfo.l, high: marketInfo.h },
+              weekly: { low: marketInfo.l - 5, high: marketInfo.h + 5 }, // Simulado
+              monthly: { low: marketInfo.l - 10, high: marketInfo.h + 10 }, // Simulado
+            },
+          });
+        }
       } catch (error) {
-        console.error("Error fetching symbol data:", error);
+        console.error("Error fetching market data:", error);
+      } finally {
+        setLoading(false);
       }
     };
-    
-    fetchSymbolData();
+
+    fetchMarketData();
   }, [symbol]);
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <Spinner color="primary" size="lg" />
+        <p className="mt-4 text-gray-500">Cargando datos del mercado...</p>
+      </div>
+    );
+  }
+
+  if (!marketData) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <Icon icon="carbon:no-content" width={40} className="text-gray-400" />
+        <p className="mt-4 text-gray-500">No hay datos disponibles</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-1">
-      {/* Detalles y Clase de símbolo */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <h3 className="text-xs text-gray-500 mb-1">Detalles</h3>
-          <p className="text-sm font-medium">{symbolData.name}</p>
-        </div>
-        <div>
-          <h3 className="text-xs text-gray-500 mb-1">Clase de símbolo</h3>
-          <p className="text-sm font-medium">{symbolData.type}</p>
-        </div>
-      </div>
-      
-      {/* Tamaños de posición */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <h3 className="text-xs text-gray-500 mb-1">Tamaño mínimo de posición</h3>
-          <p className="text-sm font-medium">{symbolData.minPosition}</p>
-        </div>
-        <div>
-          <h3 className="text-xs text-gray-500 mb-1">Tamaño de punto</h3>
-          <p className="text-sm font-medium">{symbolData.pointSize}</p>
+    <div className="p-4 bg-white rounded-lg shadow">
+      {/* Sentimiento del mercado */}
+      <div className="mb-6">
+        <h3 className="text-sm font-medium mb-2">Sentimiento del mercado</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-red-500">{marketData.sentiment.negative.toFixed(0)}%</span>
+          <div className="flex-grow h-2 bg-gray-300 rounded">
+            <div
+              className="h-2 bg-green-500 rounded"
+              style={{ width: `${marketData.sentiment.positive}%` }}
+            ></div>
+          </div>
+          <span className="text-sm font-medium text-green-500">{marketData.sentiment.positive.toFixed(0)}%</span>
         </div>
       </div>
-      
-      {/* Intercambio y valor nominal */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <h3 className="text-xs text-gray-500 mb-1">Intercambio (puntos)</h3>
-          <p className="text-sm">
-            <span className="text-red-600">L: {symbolData.spread.bid}</span>
-            <span className="mx-1">|</span>
-            <span className="text-green-600">S: {symbolData.spread.ask}</span>
-          </p>
-        </div>
-        <div>
-          <h3 className="text-xs text-gray-500 mb-1">Valor nominal de 1 lote</h3>
-          <p className="text-sm font-medium">{symbolData.nominalValue}</p>
-        </div>
-      </div>
-      
-      {/* Valor de punto y apalancamiento */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <h3 className="text-xs text-gray-500 mb-1">Valor de punto por 1 lote</h3>
-          <p className="text-sm font-medium">{symbolData.pointValue}</p>
-        </div>
-        <div>
-          <h3 className="text-xs text-gray-500 mb-1">Apalancamiento</h3>
-          <p className="text-sm font-medium">{symbolData.leverage}</p>
+
+      {/* Cambio */}
+      <div className="mb-6">
+        <h3 className="text-sm font-medium mb-2">Cambio</h3>
+        <div className="grid grid-cols-3 gap-4">
+          {["daily", "weekly", "monthly"].map((period, idx) => (
+            <div
+              key={idx}
+              className="flex flex-col items-center justify-center border rounded-lg p-2 bg-gray-50"
+            >
+              <span className="text-xs text-gray-500">
+                {period.charAt(0).toUpperCase() + period.slice(1)}
+              </span>
+              <span className="text-sm font-medium">
+                {marketData.change[period].toFixed(2)}%
+              </span>
+            </div>
+          ))}
         </div>
       </div>
-      
-      {/* Horario del mercado */}
-      <Accordion>
-        <AccordionItem
-          key="horario"
-          aria-label="Horario del mercado"
-          title={
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Horario del mercado</span>
-              {symbolData.sessionClosed && (
-                <span className="text-xs text-amber-600 flex items-center">
-                  <Icon icon="ph:moon-stars" className="mr-1" />
-                  La sesión está cerrada
-                </span>
-              )}
-            </div>
-          }
-          classNames={{
-            title: "text-sm py-2",
-            content: "text-sm",
-          }}
-        >
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Lun</p>
-              {symbolData.marketHours.monday.map((hours, idx) => (
-                <p key={idx} className="text-xs">{hours.open} - {hours.close}</p>
-              ))}
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Mar</p>
-              {symbolData.marketHours.tuesday.map((hours, idx) => (
-                <p key={idx} className="text-xs">{hours.open} - {hours.close}</p>
-              ))}
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Miér</p>
-              {symbolData.marketHours.wednesday.map((hours, idx) => (
-                <p key={idx} className="text-xs">{hours.open} - {hours.close}</p>
-              ))}
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Jue</p>
-              {symbolData.marketHours.thursday.map((hours, idx) => (
-                <p key={idx} className="text-xs">{hours.open} - {hours.close}</p>
-              ))}
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Vie</p>
-              {symbolData.marketHours.friday.map((hours, idx) => (
-                <p key={idx} className="text-xs">{hours.open} - {hours.close}</p>
-              ))}
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Sá</p>
-              {symbolData.marketHours.saturday.length ? (
-                symbolData.marketHours.saturday.map((hours, idx) => (
-                  <p key={idx} className="text-xs">{hours.open} - {hours.close}</p>
-                ))
-              ) : (
-                <p className="text-xs text-gray-400">Cerrado</p>
-              )}
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Dom</p>
-              {symbolData.marketHours.sunday.map((hours, idx) => (
-                <p key={idx} className="text-xs">{hours.open} - {hours.close}</p>
-              ))}
+
+      {/* Rango */}
+      <div>
+        <h3 className="text-sm font-medium mb-2">Rango</h3>
+        {["daily", "weekly", "monthly"].map((period, idx) => (
+          <div key={idx} className="flex flex-col mb-4">
+            <span className="text-xs text-gray-500 mb-1">
+              {period.charAt(0).toUpperCase() + period.slice(1)}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">
+                L: {marketData.range[period].low.toFixed(2)}
+              </span>
+              <div className="flex-grow h-2 bg-gray-300 rounded relative">
+                <div
+                  className="absolute top-0 h-2 bg-blue-500 rounded"
+                  style={{
+                    left: `${((marketData.range[period].low - marketData.range[period].low) /
+                      (marketData.range[period].high - marketData.range[period].low)) *
+                      100}%`,
+                    width: `${((marketData.range[period].high - marketData.range[period].low) /
+                      marketData.range[period].high) *
+                      100}%`,
+                  }}
+                ></div>
+              </div>
+              <span className="text-xs text-gray-500">
+                Alto: {marketData.range[period].high.toFixed(2)}
+              </span>
             </div>
           </div>
-        </AccordionItem>
-      </Accordion>
+        ))}
+      </div>
     </div>
   );
 }

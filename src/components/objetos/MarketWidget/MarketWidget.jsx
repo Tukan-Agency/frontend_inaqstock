@@ -4,12 +4,11 @@ import { Icon } from "@iconify/react";
 import NewsPanel from "./NewsPanel";
 import MarketPanel from "./MarketPanel";
 import SymbolInfoPanel from "./SymbolInfoPanel";
-import "./MarketWidget.css";
 
 export default function MarketWidget({ selectedSymbol = "X:BTCUSD" }) {
-  const [selected, setSelected] = useState("mercado");
+  const [selected, setSelected] = useState("noticias");
   const [currentSymbol, setCurrentSymbol] = useState(selectedSymbol);
-  
+
   // Actualizar el símbolo si cambia desde las props
   useEffect(() => {
     setCurrentSymbol(selectedSymbol);
@@ -17,20 +16,30 @@ export default function MarketWidget({ selectedSymbol = "X:BTCUSD" }) {
 
   return (
     <div className="market-widget">
-      <Tabs 
-        aria-label="Market options" 
+      <Tabs
+        aria-label="Market options"
         selectedKey={selected}
         onSelectionChange={setSelected}
-        variant="light"
+        variant="bordered"
         size="sm"
         classNames={{
           base: "w-full",
           tabList: "bg-default-100 p-0.5 rounded-lg",
-          tab: "data-[selected=true]:bg-primary data-[selected=true]:text-white rounded-md px-3",
           cursor: "bg-primary group-data-[selected=true]:shadow-none",
-          panel: "pt-2"
+          panel: "pt-2",
         }}
       >
+        <Tab
+          key="noticias"
+          title={
+            <div className="flex items-center gap-2 py-1">
+              <Icon icon="mdi:newspaper-variant-outline" />
+              <span>Noticias</span>
+            </div>
+          }
+        >
+          <NewsPanel symbol={currentSymbol} />
+        </Tab>
         <Tab
           key="mercado"
           title={
@@ -52,17 +61,6 @@ export default function MarketWidget({ selectedSymbol = "X:BTCUSD" }) {
           }
         >
           <SymbolInfoPanel symbol={currentSymbol} />
-        </Tab>
-        <Tab
-          key="noticias"
-          title={
-            <div className="flex items-center gap-2 py-1">
-              <Icon icon="mdi:newspaper-variant-outline" />
-              <span>Noticias</span>
-            </div>
-          }
-        >
-          <NewsPanel symbol={currentSymbol} />
         </Tab>
       </Tabs>
     </div>
