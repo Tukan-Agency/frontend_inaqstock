@@ -1,21 +1,15 @@
+import React, { useState, useEffect } from "react";
 import { useSession } from "../../hooks/use-session.jsx";
-import { useState, useEffect } from "react";
 import Nav from "../navbar.jsx";
 import { useNavigate } from "react-router-dom";
-import { Card, CardBody, Select, SelectItem } from "@heroui/react";
-import {
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-  Button,
-} from "@heroui/react";
+import { Card, CardBody, Button } from "@heroui/react";
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
 import CandlestickChart from "../../components/objetos/CandlestickChart.jsx";
-import useCachedApi from "../services/useCachedApi.js";
 import MarketList from "../../components/objetos/MarketList.jsx";
-import { Icon } from "@iconify/react";
-import MarketWidget from "../objetos/MarketWidget/MarketWidget";
+import MarketWidget from "../objetos/MarketWidget/MarketWidget.jsx";
 import TradingTabs from "../objetos/TradingTabs.jsx";
+import { Icon } from "@iconify/react";
+import useCachedData from "../../hooks/useCachedData.js";
 
 const TIME_RANGES = [
   { key: "M30", label: "M30", range: { multiplier: 30, timespan: "minute" } },
@@ -28,30 +22,27 @@ const TIME_RANGES = [
 ];
 
 const CHART_TYPES = [
-  {
-    key: "candlestick",
-    label: "Velas",
-    icon: "material-symbols:candlestick-chart-rounded",
-  },
+  { key: "candlestick", label: "Velas", icon: "material-symbols:candlestick-chart-rounded" },
   { key: "line", label: "Línea", icon: "mdi:chart-line" },
 ];
 
 export default function Operar() {
-  const [openPositions, setOpenPositions] = useState([]);
-
   const { session } = useSession();
   const navigate = useNavigate();
 
   const [selectedSymbol, setSelectedSymbol] = useState("X:BTCUSD");
   const [chartType, setChartType] = useState("candlestick");
   const [selectedRange, setSelectedRange] = useState(TIME_RANGES[4]); // D1 por defecto
-  const [startDate, setStartDate] = useState("2025-01-01");
-  const [endDate, setEndDate] = useState("2025-12-31");
 
   // Construye la URL según los filtros
-  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/${selectedRange.range.multiplier}/${selectedRange.range.timespan}/${startDate}/${endDate}?apiKey=MF98h8vorj239xqQzHGEgjZ4JefrmFOj`;
+  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/${selectedRange.range.multiplier}/${selectedRange.range.timespan}/2025-01-01/2025-12-31?apiKey=MF98h8vorj239xqQzHGEgjZ4JefrmFOj`;
 
-  const { data, loading, error } = useCachedApi(url);
+  // Hook para el manejo de caché
+  const { data, loading, error } = useCachedData(url, async () => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Error al cargar los datos.");
+    return await response.json();
+  });
 
   const ohlcData = data?.results
     ? [...data.results].sort((a, b) => a.t - b.t)
@@ -62,24 +53,6 @@ export default function Operar() {
     return null;
   }
 
-  const handleMarketSelect = (symbol) => {
-    setSelectedSymbol(symbol);
-  };
-  console.log("url", url);
- // En Operar.jsx
-useEffect(() => {
-  const handleTrade = (event) => {
-    const tradeData = event.detail;
-    setOpenPositions(prev => [...prev, {
-      id: Math.random().toString(36).substr(2, 9),
-      ...tradeData
-    }]);
-  };
-
-  window.addEventListener('trade-executed', handleTrade);
-  return () => window.removeEventListener('trade-executed', handleTrade);
-}, []);
-
   return (
     <div className="text-foreground bg-background h-[100vh]">
       <div className="flex flex-col gap-4 p-5">
@@ -89,13 +62,13 @@ useEffect(() => {
           <div className="flex flex-row gap-4">
             {/* Market List */}
             <div className="flex-[1]">
-              <MarketList onSelect={handleMarketSelect} />
+              <MarketList onSelect={(symbol) => setSelectedSymbol(symbol)} />
             </div>
 
             {/* Chart and Toolbar */}
             <div className="flex-[3]">
               <Card className="border border-solid border-[#00689b9e] h-[520px] p-3">
-                {/* Toolbar estilo imagen 2 */}
+                {/* Toolbar */}
                 <div className="flex items-center justify-between mb-2 px-2">
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-lg">{selectedSymbol}</span>
@@ -104,27 +77,15 @@ useEffect(() => {
                     {/* Botón tipo de gráfico */}
                     <Dropdown>
                       <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          variant="solid"
-                          size="sm"
-                          aria-label="Seleccionar tipo de gráfico"
-                        >
-                          <Icon
-                            icon={
-                              CHART_TYPES.find((t) => t.key === chartType).icon
-                            }
-                            width={20}
-                          />
+                        <Button isIconOnly variant="solid" size="sm" aria-label="Seleccionar tipo de gráfico">
+                          <Icon icon={CHART_TYPES.find((t) => t.key === chartType).icon} width={20} />
                         </Button>
                       </DropdownTrigger>
                       <DropdownMenu
                         aria-label="Tipo de gráfico"
                         selectionMode="single"
                         selectedKeys={[chartType]}
-                        onSelectionChange={(keys) =>
-                          setChartType(Array.from(keys)[0])
-                        }
+                        onSelectionChange={(keys) => setChartType(Array.from(keys)[0])}
                       >
                         {CHART_TYPES.map((type) => (
                           <DropdownItem key={type.key} textValue={type.label}>
@@ -138,20 +99,12 @@ useEffect(() => {
                     </Dropdown>
                     <Dropdown>
                       <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          variant="solid"
-                          size="sm"
-                          aria-label="Seleccionar tipo de gráfico"
-                        >
-                          <Icon
-                            icon="material-symbols:calendar-month"
-                            width={20}
-                          />
+                        <Button isIconOnly variant="solid" size="sm" aria-label="Seleccionar rango de tiempo">
+                          <Icon icon="material-symbols:calendar-month" width={20} />
                         </Button>
                       </DropdownTrigger>
                       <DropdownMenu
-                        aria-label="Tipo de gráfico"
+                        aria-label="Rango de tiempo"
                         selectionMode="single"
                         selectedKey={selectedRange.key}
                         onSelectionChange={(keySet) => {
@@ -163,13 +116,7 @@ useEffect(() => {
                         {TIME_RANGES.map((range) => (
                           <DropdownItem key={range.key} textValue={range.label}>
                             <div className="flex items-center gap-2">
-                              <span
-                                className={
-                                  range.key === selectedRange.key
-                                    ? "text-primary"
-                                    : ""
-                                }
-                              >
+                              <span className={range.key === selectedRange.key ? "text-primary" : ""}>
                                 {range.label}
                               </span>
                             </div>
@@ -177,7 +124,6 @@ useEffect(() => {
                         ))}
                       </DropdownMenu>
                     </Dropdown>
-                    {/* Botón rango de tiempo */}
                   </div>
                 </div>
                 {/* Chart */}
@@ -206,7 +152,7 @@ useEffect(() => {
             <div className="flex-[1]">
               <Card className="min-h-[350px] border border-solid border-[#00689b9e]">
                 <CardBody>
-                  <MarketWidget />
+                  <MarketWidget selectedSymbol={selectedSymbol} />
                 </CardBody>
               </Card>
             </div>
@@ -214,8 +160,7 @@ useEffect(() => {
             <div className="flex-[3]">
               <Card className="min-h-[350px] border border-solid border-[#00689b9e]">
                 <CardBody>
-                  <TradingTabs openPositions={openPositions} />
-
+                  <TradingTabs openPositions={[]} />
                 </CardBody>
               </Card>
             </div>

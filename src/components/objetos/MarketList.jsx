@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardBody,
@@ -19,6 +19,7 @@ export default function MarketList({ onSelect }) {
   const [selectedTab, setSelectedTab] = useState("favorites");
   const [expandedMarket, setExpandedMarket] = useState(null);
   const [markets, setMarkets] = useState([]);
+  const [topMovers, setTopMovers] = useState([]); // Nueva state para top movers
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedMarketData, setSelectedMarketData] = useState(null);
@@ -50,27 +51,45 @@ export default function MarketList({ onSelect }) {
         color: "Danger",
         duration: 3500,
       });
-      setPriceError(null); // Limpia el error para evitar dobles toasts
+      setPriceError(null);
     }
   }, [priceError]);
 
-  // Cargar lista de mercados
+  // Cargar lista de mercados y top movers
   useEffect(() => {
     const loadMarkets = async () => {
       try {
         setLoading(true);
+        
+        // Cargar mercados regulares (para favorites)
         const data = await polygonService.getMarketsList();
-
         const formattedMarkets = (data.tickers || []).map((t) => ({
-          symbol: t.ticker, // ej. "X:STXUSD"
-          name: t.ticker.replace(/^X:/, ""), // si no hay nombre, usar ticker limpio
+          symbol: t.ticker,
+          name: t.ticker.replace(/^X:/, ""),
           type: "crypto",
           market: "crypto",
           exchange: "CRYPTO",
           isFavorite: favorites.includes(t.ticker),
         }));
-
         setMarkets(formattedMarkets);
+
+        // Cargar top movers usando la nueva función
+        const popularCrypto = await polygonService.getPopularCrypto();
+        const formattedTopMovers = (popularCrypto || []).map((t) => ({
+          symbol: t.ticker,
+          name: t.ticker.replace(/^X:/, ""),
+          type: "crypto",
+          market: "crypto",
+          exchange: "CRYPTO",
+          isFavorite: favorites.includes(t.ticker),
+          // Datos adicionales para mostrar en top movers
+          price: t.day?.c?.toFixed(2) || "N/A",
+          change: t.day?.c && t.day?.o ? 
+            (((t.day.c - t.day.o) / t.day.o) * 100).toFixed(2) : "0.00",
+          volume: t.day?.v || 0,
+        }));
+        setTopMovers(formattedTopMovers);
+
         setError(null);
       } catch (err) {
         setError("Error cargando mercados");
@@ -81,7 +100,6 @@ export default function MarketList({ onSelect }) {
     };
 
     loadMarkets();
-    // eslint-disable-next-line
   }, [favorites]);
 
   // Cargar precio cuando se expande un mercado
@@ -140,13 +158,15 @@ export default function MarketList({ onSelect }) {
     });
   };
 
-  // <-- Aquí agregamos la llamada a onSelect
   const handleMarketClick = (symbol) => {
     setExpandedMarket(expandedMarket === symbol ? null : symbol);
-    if (onSelect) onSelect(symbol); // Notifica al padre
+    if (onSelect) onSelect(symbol);
   };
 
-  const filteredMarkets = markets.filter(
+  // Usar diferentes fuentes según la pestaña seleccionada
+  const sourceMarkets = selectedTab === "topmovers" ? topMovers : markets;
+  
+  const filteredMarkets = sourceMarkets.filter(
     (market) =>
       market.symbol.toLowerCase().includes(searchText.toLowerCase()) ||
       market.name.toLowerCase().includes(searchText.toLowerCase())
@@ -235,6 +255,20 @@ export default function MarketList({ onSelect }) {
                   </div>
 
                   <div className="flex items-center gap-3">
+                    {/* Mostrar precio y cambio en Top Movers */}
+                    {selectedTab === "topmovers" && market.price && (
+                      <div className="text-right text-sm">
+                        <div className="font-medium">${market.price}</div>
+                        <div className={`text-xs ${
+                          parseFloat(market.change) >= 0 
+                            ? "text-green-500" 
+                            : "text-red-500"
+                        }`}>
+                          {parseFloat(market.change) >= 0 ? "+" : ""}{market.change}%
+                        </div>
+                      </div>
+                    )}
+                    
                     <Button
                       isIconOnly
                       size="sm"

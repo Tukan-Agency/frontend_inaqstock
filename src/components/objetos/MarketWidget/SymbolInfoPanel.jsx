@@ -4,150 +4,142 @@ import { Icon } from "@iconify/react";
 import axios from "axios";
 
 export default function SymbolInfoPanel({ symbol }) {
-  const [symbolData, setSymbolData] = useState({
-    name: "CFD basado en onzas troy de plata",
-    type: "CFD",
-    minPosition: 0.01,
-    pointSize: 0.001,
-    spread: { bid: -5.497, ask: 3.601 },
-    nominalValue: "204 835,00 USD",
-    pointValue: "5,00 USD",
-    leverage: "1: 100 (1,00%)",
-    marketHours: {
-      monday: [
-        { open: "00:00", close: "21:00" },
-        { open: "22:01", close: "23:59" },
-      ],
-      tuesday: [
-        { open: "00:00", close: "21:00" },
-        { open: "22:01", close: "23:59" },
-      ],
-      wednesday: [
-        { open: "00:00", close: "21:00" },
-        { open: "22:01", close: "23:59" },
-      ],
-      thursday: [
-        { open: "00:00", close: "21:00" },
-        { open: "22:01", close: "23:59" },
-      ],
-      friday: [{ open: "00:00", close: "20:55" }],
-      saturday: [],
-      sunday: [{ open: "22:01", close: "23:59" }],
-    },
-    sessionClosed: true,
-  });
+  const [symbolData, setSymbolData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchSymbolData = async () => {
       if (!symbol) return;
 
+      setLoading(true);
+      setError(null);
+
       try {
-        // Aquí iría la llamada a la API real si estuviera disponible
-        // const response = await axios.get(`https://api.example.com/symbol/${symbol}`);
-        // setSymbolData(response.data);
-      } catch (error) {
-        console.error("Error fetching symbol data:", error);
+        const response = await axios.get(
+          `https://api.polygon.io/v3/reference/tickers/${symbol}?apiKey=MF98h8vorj239xqQzHGEgjZ4JefrmFOj`
+        );
+        setSymbolData(response.data.results);
+      } catch (err) {
+        console.error("Error fetching symbol data:", err);
+        setError("No se pudo cargar la información del símbolo.");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchSymbolData();
   }, [symbol]);
 
+ 
+
+  if (loading) {
+    return (
+      <div className="p-4 bg-white rounded-lg shadow flex items-center justify-center">
+        <Icon icon="eos-icons:loading" width={30} className="mr-2" />
+        <span>Cargando información del símbolo...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-white rounded-lg shadow flex items-center justify-center text-red-500">
+        <Icon icon="carbon:warning-alt" width={30} className="mr-2" />
+        <span>{error}</span>
+      </div>
+    );
+  }
+
+  if (!symbolData) {
+    return (
+      <div className="p-4 bg-white rounded-lg shadow flex items-center justify-center text-gray-500">
+        <Icon icon="carbon:no-content" width={30} className="mr-2" />
+        <span>No hay datos disponibles para el símbolo seleccionado.</span>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 bg-white rounded-lg shadow">
-      {/* Detalles y Clase de símbolo */}
+      {/* Nombre y descripción */}
+      <div className="mb-4">
+        <h3 className="text-sm font-bold">{symbolData.name}</h3>
+        <p className="text-xs text-gray-500">{symbolData.description}</p>
+      </div>
+
+      {/* Detalles principales */}
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <h3 className="text-xs text-gray-500 mb-1">Detalles</h3>
-          <p className="text-sm font-medium">{symbolData.name}</p>
-        </div>
         <div>
           <h3 className="text-xs text-gray-500 mb-1">Clase de símbolo</h3>
           <p className="text-sm font-medium">{symbolData.type}</p>
         </div>
-      </div>
-
-      {/* Tamaños de posición */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
-          <h3 className="text-xs text-gray-500 mb-1">Tamaño mínimo de posición</h3>
-          <p className="text-sm font-medium">{symbolData.minPosition}</p>
-        </div>
-        <div>
-          <h3 className="text-xs text-gray-500 mb-1">Tamaño de punto</h3>
-          <p className="text-sm font-medium">{symbolData.pointSize}</p>
+          <h3 className="text-xs text-gray-500 mb-1">Mercado</h3>
+          <p className="text-sm font-medium">{symbolData.market}</p>
         </div>
       </div>
 
-      {/* Intercambio y valor nominal */}
+      {/* Información financiera */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
-          <h3 className="text-xs text-gray-500 mb-1">Intercambio (puntos)</h3>
-          <p className="text-sm">
-            <span className="text-red-600">L: {symbolData.spread.bid}</span>
-            <span className="mx-1">|</span>
-            <span className="text-green-600">S: {symbolData.spread.ask}</span>
+          <h3 className="text-xs text-gray-500 mb-1">Capitalización de mercado</h3>
+          <p className="text-sm font-medium">
+            {symbolData.market_cap
+              ? `$${symbolData.market_cap.toLocaleString()}`
+              : "N/A"}
           </p>
         </div>
         <div>
-          <h3 className="text-xs text-gray-500 mb-1">Valor nominal de 1 lote</h3>
-          <p className="text-sm font-medium">{symbolData.nominalValue}</p>
+          <h3 className="text-xs text-gray-500 mb-1">Acciones en circulación</h3>
+          <p className="text-sm font-medium">
+            {symbolData.weighted_shares_outstanding
+              ? symbolData.weighted_shares_outstanding.toLocaleString()
+              : "N/A"}
+          </p>
         </div>
       </div>
 
-      {/* Valor de punto y apalancamiento */}
+      {/* Información de contacto */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
-          <h3 className="text-xs text-gray-500 mb-1">Valor de punto por 1 lote</h3>
-          <p className="text-sm font-medium">{symbolData.pointValue}</p>
+          <h3 className="text-xs text-gray-500 mb-1">Teléfono</h3>
+          <p className="text-sm font-medium">{symbolData.phone_number || "N/A"}</p>
         </div>
         <div>
-          <h3 className="text-xs text-gray-500 mb-1">Apalancamiento</h3>
-          <p className="text-sm font-medium">{symbolData.leverage}</p>
+          <h3 className="text-xs text-gray-500 mb-1">Página web</h3>
+          <a
+            href={symbolData.homepage_url || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-blue-500"
+          >
+            {symbolData.homepage_url || "N/A"}
+          </a>
         </div>
       </div>
 
-      {/* Horario del mercado */}
-      <Accordion>
-        <AccordionItem
-          key="horario"
-          aria-label="Horario del mercado"
-          title={
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Horario del mercado</span>
-              {symbolData.sessionClosed && (
-                <span className="text-xs text-amber-600 flex items-center">
-                  <Icon icon="ph:moon-stars" className="mr-1" />
-                  La sesión está cerrada
-                </span>
-              )}
-            </div>
-          }
-          classNames={{
-            title: "text-sm py-2",
-            content: "text-sm",
-          }}
-        >
-          <div className="grid grid-cols-2 gap-4">
-            {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day) => (
-              <div key={day}>
-                <p className="text-sm text-gray-600 mb-1">
-                  {day.charAt(0).toUpperCase() + day.slice(1)}
-                </p>
-                {symbolData.marketHours[day].length ? (
-                  symbolData.marketHours[day].map((hours, idx) => (
-                    <p key={idx} className="text-xs">
-                      {hours.open} - {hours.close}
-                    </p>
-                  ))
-                ) : (
-                  <p className="text-xs text-gray-400">Cerrado</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </AccordionItem>
-      </Accordion>
+      {/* Branding */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          {symbolData.branding?.logo_url && (
+            <img
+              src={symbolData.branding.logo_url}
+              alt={`${symbolData.name} Logo`}
+              className="w-16 h-16 object-contain"
+            />
+          )}
+        </div>
+        <div>
+          {symbolData.branding?.icon_url && (
+            <img
+              src={symbolData.branding.icon_url}
+              alt={`${symbolData.name} Icon`}
+              className="w-8 h-8 object-contain"
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

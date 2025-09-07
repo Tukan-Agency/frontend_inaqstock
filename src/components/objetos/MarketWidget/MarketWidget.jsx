@@ -38,6 +38,7 @@ export default function MarketWidget({ selectedSymbol = "X:BTCUSD" }) {
             </div>
           }
         >
+          {/* Panel que carga las noticias según el símbolo */}
           <NewsPanel symbol={currentSymbol} />
         </Tab>
         <Tab
@@ -49,6 +50,7 @@ export default function MarketWidget({ selectedSymbol = "X:BTCUSD" }) {
             </div>
           }
         >
+          {/* Panel que muestra datos del mercado según el símbolo */}
           <MarketPanel symbol={currentSymbol} />
         </Tab>
         <Tab
@@ -60,6 +62,7 @@ export default function MarketWidget({ selectedSymbol = "X:BTCUSD" }) {
             </div>
           }
         >
+          {/* Panel que muestra información detallada del símbolo */}
           <SymbolInfoPanel symbol={currentSymbol} />
         </Tab>
       </Tabs>
