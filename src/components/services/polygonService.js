@@ -1,4 +1,4 @@
-const API_KEY = "MF98h8vorj239xqQzHGEgjZ4JefrmFOj";
+const API_KEY = "7ZDpKAA_vz3jIGp2T2POBDyYR_1RJ5xn";
 const BASE_URL = "https://api.polygon.io/v3";
 const BASE_URL_V2 = "https://api.polygon.io/v2";
 const AGGS_URL = "https://api.polygon.io/v2/aggs";
@@ -7,7 +7,7 @@ export const polygonService = {
   // Obtener lista de mercados
   getMarketsList: async () => {
     try {
-      const url = `${BASE_URL_V2}/snapshot/locale/global/markets/crypto/tickers?apiKey=${API_KEY}`;
+      const url = `${BASE_URL}/reference/tickers?market=stocks&active=true&order=asc&limit=100&sort=ticker&apiKey=${API_KEY}`;
       const response = await fetch(url);
       
       if (!response.ok) {

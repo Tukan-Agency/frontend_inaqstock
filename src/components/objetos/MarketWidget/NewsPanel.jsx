@@ -14,7 +14,7 @@ export default function NewsPanel({ symbol }) {
       try {
         // Llamada a la API de Polygon
         const response = await axios.get(
-          `https://api.polygon.io/v2/reference/news?limit=10&order=desc&sort=published_utc&apiKey=MF98h8vorj239xqQzHGEgjZ4JefrmFOj`
+          `https://api.polygon.io/v2/reference/news?limit=10&order=desc&sort=published_utc&apiKey=7ZDpKAA_vz3jIGp2T2POBDyYR_1RJ5xn`
         );
 
         if (response.data && response.data.results) {

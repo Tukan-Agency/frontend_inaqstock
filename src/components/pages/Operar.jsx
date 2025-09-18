@@ -9,7 +9,7 @@ import MarketList from "../../components/objetos/MarketList.jsx";
 import MarketWidget from "../objetos/MarketWidget/MarketWidget.jsx";
 import TradingTabs from "../objetos/TradingTabs.jsx";
 import { Icon } from "@iconify/react";
-import useCachedData from "../../hooks/useCachedData.js";
+import useCachedApi from "../services/useCachedApi.js"; // 👈 CAMBIO: Usar useCachedApi
 
 const TIME_RANGES = [
   { key: "M30", label: "M30", range: { multiplier: 30, timespan: "minute" } },
@@ -27,22 +27,22 @@ const CHART_TYPES = [
 ];
 
 export default function Operar() {
+  const [openPositions, setOpenPositions] = useState([]); // 👈 AGREGADO: Como en el código que funcionaba
+
   const { session } = useSession();
   const navigate = useNavigate();
 
   const [selectedSymbol, setSelectedSymbol] = useState("X:BTCUSD");
   const [chartType, setChartType] = useState("candlestick");
-  const [selectedRange, setSelectedRange] = useState(TIME_RANGES[4]); // D1 por defecto
+  const [selectedRange, setSelectedRange] = useState(TIME_RANGES[4]); // 👈 CAMBIO: Índice 4 como en el original
+  const [startDate, setStartDate] = useState("2025-01-01");
+  const [endDate, setEndDate] = useState("2025-12-31");
 
-  // Construye la URL según los filtros
-  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/${selectedRange.range.multiplier}/${selectedRange.range.timespan}/2025-01-01/2025-12-31?apiKey=MF98h8vorj239xqQzHGEgjZ4JefrmFOj`;
+  // 👈 CAMBIO: URL simple como en el código que funcionaba
+  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/${selectedRange.range.multiplier}/${selectedRange.range.timespan}/${startDate}/${endDate}?apiKey=7ZDpKAA_vz3jIGp2T2POBDyYR_1RJ5xn`;
 
-  // Hook para el manejo de caché
-  const { data, loading, error } = useCachedData(url, async () => {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Error al cargar los datos.");
-    return await response.json();
-  });
+  // 👈 CAMBIO: Usar useCachedApi como en el código que funcionaba
+  const { data, loading, error } = useCachedApi(url);
 
   const ohlcData = data?.results
     ? [...data.results].sort((a, b) => a.t - b.t)
@@ -53,6 +53,26 @@ export default function Operar() {
     return null;
   }
 
+  const handleMarketSelect = (symbol) => {
+    setSelectedSymbol(symbol);
+  };
+
+  console.log("url", url);
+
+  // 👈 AGREGADO: useEffect para posiciones como en el código que funcionaba
+  useEffect(() => {
+    const handleTrade = (event) => {
+      const tradeData = event.detail;
+      setOpenPositions(prev => [...prev, {
+        id: Math.random().toString(36).substr(2, 9),
+        ...tradeData
+      }]);
+    };
+
+    window.addEventListener('trade-executed', handleTrade);
+    return () => window.removeEventListener('trade-executed', handleTrade);
+  }, []);
+
   return (
     <div className="text-foreground bg-background h-[100vh]">
       <div className="flex flex-col gap-4 p-5">
@@ -62,7 +82,7 @@ export default function Operar() {
           <div className="flex flex-row gap-4">
             {/* Market List */}
             <div className="flex-[1]">
-              <MarketList onSelect={(symbol) => setSelectedSymbol(symbol)} />
+              <MarketList onSelect={handleMarketSelect} />
             </div>
 
             {/* Chart and Toolbar */}
@@ -97,16 +117,18 @@ export default function Operar() {
                         ))}
                       </DropdownMenu>
                     </Dropdown>
+
+                    {/* 👈 SELECTOR DE TIEMPO - EXACTAMENTE como en el código que funcionaba */}
                     <Dropdown>
                       <DropdownTrigger>
-                        <Button isIconOnly variant="solid" size="sm" aria-label="Seleccionar rango de tiempo">
+                        <Button isIconOnly variant="solid" size="sm" aria-label="Seleccionar tipo de gráfico">
                           <Icon icon="material-symbols:calendar-month" width={20} />
                         </Button>
                       </DropdownTrigger>
                       <DropdownMenu
-                        aria-label="Rango de tiempo"
+                        aria-label="Tipo de gráfico"
                         selectionMode="single"
-                        selectedKey={selectedRange.key}
+                        selectedKey={selectedRange.key} // 👈 CAMBIO: selectedKey (singular) como en el original
                         onSelectionChange={(keySet) => {
                           const key = Array.from(keySet)[0];
                           const range = TIME_RANGES.find((r) => r.key === key);
@@ -160,7 +182,7 @@ export default function Operar() {
             <div className="flex-[3]">
               <Card className="min-h-[350px] border border-solid border-[#00689b9e]">
                 <CardBody>
-                  <TradingTabs openPositions={[]} />
+                  <TradingTabs openPositions={openPositions} /> {/* 👈 CAMBIO: Pasar openPositions */}
                 </CardBody>
               </Card>
             </div>

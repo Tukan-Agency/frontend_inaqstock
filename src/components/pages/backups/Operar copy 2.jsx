@@ -11,7 +11,7 @@ export default function Operar() {
   const navigate = useNavigate();
 
   const url =
-    "https://api.polygon.io/v2/aggs/ticker/X:BTCUSD/range/1/day/2025-06-01/2025-06-30?apiKey=MF98h8vorj239xqQzHGEgjZ4JefrmFOj";
+    "https://api.polygon.io/v2/aggs/ticker/X:BTCUSD/range/1/day/2025-06-01/2025-06-30?apiKey=7ZDpKAA_vz3jIGp2T2POBDyYR_1RJ5xn";
 
   const { data, loading, error, refetch } = useApi(url);
 

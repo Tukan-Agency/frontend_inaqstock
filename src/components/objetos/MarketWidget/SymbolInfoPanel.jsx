@@ -17,7 +17,7 @@ export default function SymbolInfoPanel({ symbol }) {
 
       try {
         const response = await axios.get(
-          `https://api.polygon.io/v3/reference/tickers/${symbol}?apiKey=MF98h8vorj239xqQzHGEgjZ4JefrmFOj`
+          `https://api.polygon.io/v3/reference/tickers/${symbol}?apiKey=7ZDpKAA_vz3jIGp2T2POBDyYR_1RJ5xn`
         );
         setSymbolData(response.data.results);
       } catch (err) {

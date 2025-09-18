@@ -5,6 +5,7 @@ import App from "./App.jsx";
 import "./index.css";
 import { BrowserRouter } from "react-router-dom";
 import { SessionProvider } from "./context/session";
+import { BalanceProvider } from "../src/context/BalanceContext.jsx"; // 👈 IMPORTAR
 import { HeroUIProvider } from "@heroui/react";
 import { ToastProvider } from "@heroui/toast";
 import ErrorBoundary from "./components/error-boundary";
@@ -29,15 +30,17 @@ const RootComponent = () => {
           </div>
 
           <SessionProvider>
-            <ErrorBoundary fallback={<Error />}>
-              <main
-                className={`${
-                  darkMode.value ? "dark" : ""
-                } text-foreground bg-background `}
-              >
-                <App />
-              </main>
-            </ErrorBoundary>
+            <BalanceProvider> {/* 👈 AGREGAR AQUÍ */}
+              <ErrorBoundary fallback={<Error />}>
+                <main
+                  className={`${
+                    darkMode.value ? "dark" : ""
+                  } text-foreground bg-background `}
+                >
+                  <App />
+                </main>
+              </ErrorBoundary>
+            </BalanceProvider> {/* 👈 CERRAR AQUÍ */}
           </SessionProvider>
         </HeroUIProvider>
       </BrowserRouter>

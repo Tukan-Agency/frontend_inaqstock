@@ -8,11 +8,15 @@ import {
 import { Checkbox } from "@heroui/checkbox";
 import { useState, useEffect } from "react";
 import { Icon } from "@iconify-icon/react";
+import { useBalance } from "../../context/BalanceContext"; // 👈 IMPORTAR EL CONTEXT
 
 export default function SaldosDropdown() {
   const LOCAL_KEY = "saldosSeleccionados";
+  
+  // 👈 USAR EL CONTEXT PARA OBTENER BALANCES
+  const { balances, loading, error } = useBalance();
 
-  // Estado inicial cargado desde localStorage
+  // Estado inicial cargado desde localStorage (solo para las preferencias)
   const [selected, setSelected] = useState(() => {
     const stored = localStorage.getItem(LOCAL_KEY);
     return stored ? JSON.parse(stored) : ["balance"];
@@ -23,11 +27,12 @@ export default function SaldosDropdown() {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(selected));
   }, [selected]);
 
+  // 👈 VALORES DINÁMICOS DESDE EL BACKEND
   const valores = {
-    balance: "0.00 USD",
-    capital: "0.00 USD",
-    ganancias: "0.00 USD",
-    margen: "0.00 USD",
+    balance: `${balances.balance.toFixed(2)} USD`,
+    capital: `${balances.capital.toFixed(2)} USD`,
+    ganancias: `${balances.ganancias.toFixed(2)} USD`,
+    margen: `${balances.margen.toFixed(2)} USD`,
   };
 
   const toggleSeleccion = (valor) => {
@@ -44,9 +49,20 @@ export default function SaldosDropdown() {
         <strong>
           <h3>{label}</h3>
         </strong>
-        <span className="">{valores[clave]}</span>
+        <span className={loading ? "opacity-50" : ""}>
+          {loading ? "Cargando..." : valores[clave]}
+        </span>
       </div>
     );
+
+  // 👈 MOSTRAR ERROR SI HAY PROBLEMAS
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 p-2 rounded-md text-red-500">
+        <span className="text-xs">Error cargando balances</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2 p-2 rounded-md">
@@ -59,8 +75,8 @@ export default function SaldosDropdown() {
 
       <Dropdown>
         <DropdownTrigger>
-          <Button size="sm" variant="flat">
-           <Icon icon="mingcute:down-fill" width="24" height="24" />
+          <Button size="sm" variant="flat" disabled={loading}>
+            <Icon icon="mingcute:down-fill" width="24" height="24" />
           </Button>
         </DropdownTrigger>
 
