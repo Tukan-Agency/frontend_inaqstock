@@ -29,10 +29,10 @@ export default function SaldosDropdown() {
 
   // 👈 VALORES DINÁMICOS DESDE EL BACKEND
   const valores = {
-    balance: `${balances.balance.toFixed(2)} USD`,
-    capital: `${balances.capital.toFixed(2)} USD`,
-    ganancias: `${balances.ganancias.toFixed(2)} USD`,
-    margen: `${balances.margen.toFixed(2)} USD`,
+    balance: `$${balances.balance.toFixed(2)} `,
+    capital: `$${balances.capital.toFixed(2)} `,
+    ganancias: `$${balances.ganancias.toFixed(2)} `,
+    margen: `$${balances.margen.toFixed(2)} `,
   };
 
   const toggleSeleccion = (valor) => {
@@ -49,7 +49,7 @@ export default function SaldosDropdown() {
         <strong>
           <h3>{label}</h3>
         </strong>
-        <span className={loading ? "opacity-50" : ""}>
+        <span className={loading ? "opacity-50" : " "}>
           {loading ? "Cargando..." : valores[clave]}
         </span>
       </div>

@@ -36,6 +36,7 @@ export default function Nav() {
         >
           <Tab key="operar" title="Operar" />
           <Tab key="analitica" title="Analítica" />
+          <Tab key="explorar" title="Explorar" />
         </Tabs>
       </NavbarContent>
 

@@ -7,7 +7,7 @@ export const polygonService = {
   // Obtener lista de mercados
   getMarketsList: async () => {
     try {
-      const url = `${BASE_URL}/reference/tickers?market=stocks&active=true&order=asc&limit=100&sort=ticker&apiKey=${API_KEY}`;
+      const url = `${BASE_URL}/reference/tickers?market=stocks&active=true&order=asc&limit=1000&sort=ticker&apiKey=${API_KEY}`;
       const response = await fetch(url);
       
       if (!response.ok) {

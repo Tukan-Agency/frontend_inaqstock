@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardBody,
@@ -6,7 +6,6 @@ import {
   Tabs,
   Tab,
   Button,
-  CircularProgress,
   addToast,
   Skeleton,
 } from "@heroui/react";
@@ -19,7 +18,7 @@ export default function MarketList({ onSelect }) {
   const [selectedTab, setSelectedTab] = useState("favorites");
   const [expandedMarket, setExpandedMarket] = useState(null);
   const [markets, setMarkets] = useState([]);
-  const [topMovers, setTopMovers] = useState([]); // Nueva state para top movers
+  const [topMovers, setTopMovers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedMarketData, setSelectedMarketData] = useState(null);
@@ -30,7 +29,56 @@ export default function MarketList({ onSelect }) {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Toast para errores generales (lista de mercados)
+  // Cargar lista de mercados y top movers (una sola vez)
+  useEffect(() => {
+    const loadMarkets = async () => {
+      try {
+        setLoading(true);
+
+        const data = await polygonService.getMarketsList();
+        const formattedMarkets = (data.tickers || []).map((t) => ({
+          symbol: t.ticker, // ej: "X:BTCUSD"
+          name: t.ticker.replace(/^X:/, ""),
+          type: "crypto",
+          market: "crypto",
+          exchange: "CRYPTO",
+        }));
+
+        const popularCrypto = await polygonService.getPopularCrypto();
+        const formattedTopMovers = (popularCrypto || []).map((t) => ({
+          symbol: t.ticker,
+          name: t.ticker.replace(/^X:/, ""),
+          type: "crypto",
+          market: "crypto",
+          exchange: "CRYPTO",
+          price: t.day?.c?.toFixed(2) || "N/A",
+          change:
+            t.day?.c && t.day?.o
+              ? (((t.day.c - t.day.o) / t.day.o) * 100).toFixed(2)
+              : "0.00",
+          volume: t.day?.v || 0,
+        }));
+
+        setMarkets(formattedMarkets);
+        setTopMovers(formattedTopMovers);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setError("Error cargando mercados");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMarkets();
+  }, []);
+
+  // Persistir favoritos
+  useEffect(() => {
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+  }, [favorites]);
+
+  // Toasts de error
   useEffect(() => {
     if (error) {
       addToast({
@@ -42,7 +90,6 @@ export default function MarketList({ onSelect }) {
     }
   }, [error]);
 
-  // Toast para errores del precio
   useEffect(() => {
     if (priceError) {
       addToast({
@@ -55,54 +102,18 @@ export default function MarketList({ onSelect }) {
     }
   }, [priceError]);
 
-  // Cargar lista de mercados y top movers
-  useEffect(() => {
-    const loadMarkets = async () => {
-      try {
-        setLoading(true);
-        
-        // Cargar mercados regulares (para favorites)
-        const data = await polygonService.getMarketsList();
-        const formattedMarkets = (data.tickers || []).map((t) => ({
-          symbol: t.ticker,
-          name: t.ticker.replace(/^X:/, ""),
-          type: "crypto",
-          market: "crypto",
-          exchange: "CRYPTO",
-          isFavorite: favorites.includes(t.ticker),
-        }));
-        setMarkets(formattedMarkets);
+  // Merge único por símbolo para que la pestaña Favorites considere tanto markets como topMovers
+  const allMarkets = useMemo(() => {
+    const map = new Map();
+    for (const m of markets) map.set(m.symbol, m);
+    for (const m of topMovers) {
+      if (!map.has(m.symbol)) map.set(m.symbol, m);
+      else map.set(m.symbol, { ...map.get(m.symbol), ...m }); // combinar info (por si topMovers trae price)
+    }
+    return Array.from(map.values());
+  }, [markets, topMovers]);
 
-        // Cargar top movers usando la nueva función
-        const popularCrypto = await polygonService.getPopularCrypto();
-        const formattedTopMovers = (popularCrypto || []).map((t) => ({
-          symbol: t.ticker,
-          name: t.ticker.replace(/^X:/, ""),
-          type: "crypto",
-          market: "crypto",
-          exchange: "CRYPTO",
-          isFavorite: favorites.includes(t.ticker),
-          // Datos adicionales para mostrar en top movers
-          price: t.day?.c?.toFixed(2) || "N/A",
-          change: t.day?.c && t.day?.o ? 
-            (((t.day.c - t.day.o) / t.day.o) * 100).toFixed(2) : "0.00",
-          volume: t.day?.v || 0,
-        }));
-        setTopMovers(formattedTopMovers);
-
-        setError(null);
-      } catch (err) {
-        setError("Error cargando mercados");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadMarkets();
-  }, [favorites]);
-
-  // Cargar precio cuando se expande un mercado
+  // Cargar precio al expandir
   useEffect(() => {
     const loadMarketPrice = async () => {
       if (!expandedMarket) {
@@ -110,7 +121,6 @@ export default function MarketList({ onSelect }) {
         setPriceError(null);
         return;
       }
-
       try {
         setLoadingPrice(true);
         const priceData = await polygonService.getMarketPrice(expandedMarket);
@@ -127,7 +137,6 @@ export default function MarketList({ onSelect }) {
               100
             ).toFixed(2),
           });
-          setPriceError(null);
         } else {
           setSelectedMarketData(null);
           setPriceError("No se encontraron datos del mercado.");
@@ -144,18 +153,10 @@ export default function MarketList({ onSelect }) {
     loadMarketPrice();
   }, [expandedMarket]);
 
-  useEffect(() => {
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-  }, [favorites]);
-
   const toggleFavorite = (symbol) => {
-    setFavorites((prev) => {
-      if (prev.includes(symbol)) {
-        return prev.filter((s) => s !== symbol);
-      } else {
-        return [...prev, symbol];
-      }
-    });
+    setFavorites((prev) =>
+      prev.includes(symbol) ? prev.filter((s) => s !== symbol) : [...prev, symbol]
+    );
   };
 
   const handleMarketClick = (symbol) => {
@@ -163,19 +164,28 @@ export default function MarketList({ onSelect }) {
     if (onSelect) onSelect(symbol);
   };
 
-  // Usar diferentes fuentes según la pestaña seleccionada
-  const sourceMarkets = selectedTab === "topmovers" ? topMovers : markets;
-  
-  const filteredMarkets = sourceMarkets.filter(
-    (market) =>
-      market.symbol.toLowerCase().includes(searchText.toLowerCase()) ||
-      market.name.toLowerCase().includes(searchText.toLowerCase())
+  // Conjunto para cálculo inmediato de favoritos (sin depender de isFavorite en los objetos)
+  const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
+
+  // Fuente base según pestaña (Favorites usa el merge allMarkets)
+  const baseList =
+    selectedTab === "topmovers" ? topMovers : selectedTab === "favorites" ? allMarkets : markets;
+
+  // Enriquecer con flag de favorito para UI
+  const enriched = useMemo(
+    () => baseList.map((m) => ({ ...m, isFavorite: favoritesSet.has(m.symbol) })),
+    [baseList, favoritesSet]
+  );
+
+  // Filtros
+  const filtered = enriched.filter(
+    (m) =>
+      m.symbol.toLowerCase().includes(searchText.toLowerCase()) ||
+      (m.name || "").toLowerCase().includes(searchText.toLowerCase())
   );
 
   const displayedMarkets =
-    selectedTab === "favorites"
-      ? filteredMarkets.filter((m) => m.isFavorite)
-      : filteredMarkets;
+    selectedTab === "favorites" ? filtered.filter((m) => m.isFavorite) : filtered;
 
   return (
     <Card className="min-h-[470px] border border-solid border-[#00689b9e]">
@@ -236,13 +246,16 @@ export default function MarketList({ onSelect }) {
               </span>
             </div>
           ) : (
-            displayedMarkets.map((market) => (
-              <div key={market.symbol}>
-                <div
-                  className="flex items-center justify-between p-3 hover:bg-default-100 cursor-pointer border-b border-[#00689b9e]"
-                  onClick={() => handleMarketClick(market.symbol)}
-                >
-                  <div className="flex items-center gap-2">
+            displayedMarkets.map((market) => {
+              const isFav = market.isFavorite;
+              const showPrice = selectedTab === "topmovers" && market.price;
+
+              return (
+                <div key={market.symbol}>
+                  <div
+                    className="flex items-center justify-between p-3 hover:bg-default-100 cursor-pointer border-b border-[#00689b9e]"
+                    onClick={() => handleMarketClick(market.symbol)}
+                  >
                     <div>
                       <div className="font-medium">{market.symbol}</div>
                       <div className="text-xs text-default-500">
@@ -252,74 +265,73 @@ export default function MarketList({ onSelect }) {
                         {market.market} • {market.exchange}
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-3">
-                    {/* Mostrar precio y cambio en Top Movers */}
-                    {selectedTab === "topmovers" && market.price && (
-                      <div className="text-right text-sm">
-                        <div className="font-medium">${market.price}</div>
-                        <div className={`text-xs ${
-                          parseFloat(market.change) >= 0 
-                            ? "text-green-500" 
-                            : "text-red-500"
-                        }`}>
-                          {parseFloat(market.change) >= 0 ? "+" : ""}{market.change}%
+                    <div className="flex items-center gap-3">
+                      {showPrice && (
+                        <div className="text-right text-sm">
+                          <div className="font-medium">${market.price}</div>
+                          <div
+                            className={`text-xs ${
+                              parseFloat(market.change) >= 0
+                                ? "text-green-500"
+                                : "text-red-500"
+                            }`}
+                          >
+                            {parseFloat(market.change) >= 0 ? "+" : ""}
+                            {market.change}%
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      variant="light"
-                      className="text-default-500"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(market.symbol);
-                      }}
-                    >
-                      <Icon
-                        icon={
-                          market.isFavorite
-                            ? "material-symbols:star"
-                            : "material-symbols:star-outline"
-                        }
-                        width="20"
-                        height="20"
-                      />
-                    </Button>
-                  </div>
-                </div>
+                      )}
 
-                {expandedMarket === market.symbol && (
-                  <div className="p-4 bg-default-50">
-                    {loadingPrice ? (
-                      <div className="flex items-center justify-center py-2">
-                        <Card
-                          className="w-full space-y-5 shadow-none"
-                          radius="lg"
-                        >
-                          <Skeleton className="rounded-lg">
-                            <div className="h-44 rounded-lg bg-default-300" />
-                          </Skeleton>
-                        </Card>
-                      </div>
-                    ) : selectedMarketData ? (
-                      <>
-                        <div className="flex items-center justify-center py-2"></div>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="text-default-500"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(market.symbol);
+                        }}
+                      >
+                        <Icon
+                          icon={
+                            isFav
+                              ? "material-symbols:star"
+                              : "material-symbols:star-outline"
+                          }
+                          width="20"
+                          height="20"
+                        />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {expandedMarket === market.symbol && (
+                    <div className="p-4 bg-default-50">
+                      {loadingPrice ? (
+                        <div className="flex items-center justify-center py-2">
+                          <Card
+                            className="w-full space-y-5 shadow-none"
+                            radius="lg"
+                          >
+                            <Skeleton className="rounded-lg">
+                              <div className="h-44 rounded-lg bg-default-300" />
+                            </Skeleton>
+                          </Card>
+                        </div>
+                      ) : selectedMarketData ? (
                         <MarketTradePanel
                           market={{
                             ...market,
                             ...selectedMarketData,
                           }}
                         />
-                      </>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            ))
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </CardBody>
