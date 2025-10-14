@@ -21,6 +21,8 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Tabs,
+  Tab,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import Chart from "react-apexcharts";
@@ -618,7 +620,7 @@ export default function ListaOrdenes() {
               <Chip variant="flat" color="default" className="text-sm">
                 Mi cuenta <span className="mx-1">|</span> ID: {clientIdQuery}
               </Chip>
-              {/* Balance arriba removido según tu pedido */}
+
               <div className="flex items-center gap-2">
                 <span className="text-sm text-default-700">Año</span>
                 <Input
@@ -633,16 +635,23 @@ export default function ListaOrdenes() {
                   className="w-24"
                 />
               </div>
-              <RadioGroup
-                value={selectedPeriod}
-                onValueChange={setSelectedPeriod}
-                orientation="horizontal"
+
+              {/* 🔄 Tabs en lugar de RadioGroup */}
+              <Tabs
+                selectedKey={selectedPeriod}
+                onSelectionChange={(key) => setSelectedPeriod(key)}
+                variant="underlined"
                 size="sm"
+                aria-label="Periodo de análisis"
+                color="primary"
+                className="h-10"
               >
-                <Radio value="M">Mes</Radio>
-                <Radio value="T">Trimestre</Radio>
-                <Radio value="S">Semestre</Radio>
-              </RadioGroup>
+                <Tab key="M" title="Mes" />
+                <Tab key="T" title="Trimestre" />
+                <Tab key="S" title="Semestre" />
+              </Tabs>
+
+              {/* Select dinámico según periodo */}
               {selectedPeriod === "M" && (
                 <Select
                   size="sm"
@@ -662,6 +671,7 @@ export default function ListaOrdenes() {
                   ))}
                 </Select>
               )}
+
               {selectedPeriod === "T" && (
                 <Select
                   size="sm"
@@ -679,19 +689,23 @@ export default function ListaOrdenes() {
                   ))}
                 </Select>
               )}
+
               {selectedPeriod === "S" && (
-                <RadioGroup
-                  value={selectedSemestre}
-                  onValueChange={setSelectedSemestre}
-                  orientation="horizontal"
+                <Select
                   size="sm"
+                  selectedKeys={[selectedSemestre]}
+                  onSelectionChange={(keys) =>
+                    setSelectedSemestre(Array.from(keys)[0])
+                  }
+                  className="w-36"
+                  placeholder="Semestre"
                 >
                   {SEMESTRES.map((s) => (
-                    <Radio key={s.key} value={s.key}>
+                    <SelectItem key={s.key} value={s.key}>
                       {s.label}
-                    </Radio>
+                    </SelectItem>
                   ))}
-                </RadioGroup>
+                </Select>
               )}
             </div>
 

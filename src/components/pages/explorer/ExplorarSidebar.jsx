@@ -8,6 +8,7 @@ const items = [
   { to: "deposito", label: "Depósito", icon: "solar:card-bold-duotone" },
   { to: "retiro", label: "Retiro", icon: "solar:dollar-bold" },
   { to: "cuenta", label: "Cuenta", icon: "solar:user-bold" },
+  { to: "verificacion", label: "Verificar cuenta", icon: "bitcoin-icons:verify-filled" },
 ];
 
 // Botón del sidebar que navega con useNavigate y calcula "activo" sin NavLink

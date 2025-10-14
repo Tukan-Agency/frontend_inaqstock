@@ -8,32 +8,40 @@ import {
 import { Checkbox } from "@heroui/checkbox";
 import { useState, useEffect } from "react";
 import { Icon } from "@iconify-icon/react";
-import { useBalance } from "../../context/BalanceContext"; // 👈 IMPORTAR EL CONTEXT
+import { useBalance } from "../../context/BalanceContext";
+import { useAccountMode } from "../../context/AccountModeContext";
 
 export default function SaldosDropdown() {
   const LOCAL_KEY = "saldosSeleccionados";
-  
-  // 👈 USAR EL CONTEXT PARA OBTENER BALANCES
   const { balances, loading, error } = useBalance();
+  const { mode } = useAccountMode(); // <<---- modo DEMO / REAL
 
-  // Estado inicial cargado desde localStorage (solo para las preferencias)
   const [selected, setSelected] = useState(() => {
     const stored = localStorage.getItem(LOCAL_KEY);
     return stored ? JSON.parse(stored) : ["balance"];
   });
 
-  // Guardar cambios en localStorage cuando cambia `selected`
   useEffect(() => {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(selected));
   }, [selected]);
 
-  // 👈 VALORES DINÁMICOS DESDE EL BACKEND
-  const valores = {
-    balance: `$${balances.balance.toFixed(2)} `,
-    capital: `$${balances.capital.toFixed(2)} `,
-    ganancias: `$${balances.ganancias.toFixed(2)} `,
-    margen: `$${balances.margen.toFixed(2)} `,
+  // Valores ficticios para DEMO
+  const demoValues = {
+    balance: "$11999.00",
+    capital: "$9499.00",
+    ganancias: "$1,334,344.00",
+    margen: "$21,000.00",
   };
+
+  const valores =
+    mode === "demo"
+      ? demoValues
+      : {
+          balance: `$${balances.balance.toFixed(2)}`,
+          capital: `$${balances.capital.toFixed(2)}`,
+          ganancias: `$${balances.ganancias.toFixed(2)}`,
+          margen: `$${balances.margen.toFixed(2)}`,
+        };
 
   const toggleSeleccion = (valor) => {
     setSelected((prev) =>
@@ -49,14 +57,17 @@ export default function SaldosDropdown() {
         <strong>
           <h3>{label}</h3>
         </strong>
-        <span className={loading ? "opacity-50" : " "}>
-          {loading ? "Cargando..." : valores[clave]}
+        <span
+          className={`${
+            loading && mode === "real" ? "opacity-50" : "text-default-600"
+          }`}
+        >
+          {loading && mode === "real" ? "Cargando..." : valores[clave]}
         </span>
       </div>
     );
 
-  // 👈 MOSTRAR ERROR SI HAY PROBLEMAS
-  if (error) {
+  if (error && mode === "real") {
     return (
       <div className="flex items-center gap-2 p-2 rounded-md text-red-500">
         <span className="text-xs">Error cargando balances</span>
@@ -75,18 +86,17 @@ export default function SaldosDropdown() {
 
       <Dropdown>
         <DropdownTrigger>
-          <Button size="sm" variant="flat" disabled={loading}>
+          <Button size="sm" variant="flat" disabled={loading && mode === "real"}>
             <Icon icon="mingcute:down-fill" width="24" height="24" />
           </Button>
         </DropdownTrigger>
 
         <DropdownMenu closeOnSelect={false} aria-label="Saldos disponibles">
-          {Object.entries(valores).map(([key, value]) => (
+          {Object.entries(valores).map(([key]) => (
             <DropdownItem key={key} className="py-2">
               <div className="flex items-center gap-2">
                 <Checkbox
                   size="sm"
-                  className="text-white"
                   isSelected={selected.includes(key)}
                   onChange={() => toggleSeleccion(key)}
                 >

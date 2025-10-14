@@ -7,7 +7,7 @@ import Register from "./components/Register.jsx";
 import Verify from "./components/verify.jsx";
 import NotFound from "./components/not-found.jsx";
 import Analitica from "./components/pages/Analitica.jsx";
-
+import GraficaStock from "./components/pages/GraficaStock.jsx";
 // Explorar
 import ExplorarLayout from "../src/components/pages/explorer/ExplorarLayout.jsx";
 import Cuenta from "../src/components/pages/explorer/sections/Cuenta.jsx";
@@ -22,6 +22,8 @@ import AdminDashboard from "../src/components/pages/panel/sections/Dashboard.jsx
 import AdminUsuarios from "../src/components/pages/panel/sections/Usuarios.jsx";
 import AdminSolicitudes from "../src/components/pages/panel/sections/Solicitudes.jsx";
 import PanelUserOrders from "../src/components/pages/panel/sections/PanelUserOrders.jsx";
+import Verificar from "./components/pages/explorer/sections/Verificar.jsx";
+import SolicitudesVerify from "./components/pages/panel/sections/SolicitudesVerify.jsx";
 
 function App() {
   return (
@@ -38,6 +40,7 @@ function App() {
           <Route path="movimientos" element={<Movimientos />} />
           <Route path="deposito" element={<Deposito />} />
           <Route path="retiro" element={<Retiro />} />
+          <Route path="verificacion" element={<Verificar />} />
         </Route>
 
         {/* Rutas anidadas: Panel admin */}
@@ -50,6 +53,7 @@ function App() {
           />
           <Route path="usuarios" element={<AdminUsuarios />} />
           <Route path="solicitudes" element={<AdminSolicitudes />} />
+          <Route path="solicitudes-verify" element={<SolicitudesVerify />} />
           {/* Alias por si alguien escribe mal "dasboard" */}
           <Route
             path="dasboard"
@@ -58,6 +62,7 @@ function App() {
         </Route>
 
         <Route path={"/analitica"} element={<Analitica />} />
+        <Route path={"/graficastock"} element={<GraficaStock />} />
         <Route path={"/dashboard"} element={<Dashboard />} />
         <Route path={"/register"} element={<Register />} />
         <Route path={"/verify"} element={<Verify />} />

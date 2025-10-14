@@ -24,7 +24,7 @@ export default function MarketPanel({ symbol }) {
       try {
         // Usar el endpoint 'range' con fechas dinámicas
         const response = await axios.get(
-          `https://api.polygon.io/v2/aggs/ticker/${symbol}/range/1/day/${formattedSevenDaysAgo}/${formattedToday}?adjusted=true&sort=asc&apiKey=7ZDpKAA_vz3jIGp2T2POBDyYR_1RJ5xn`
+          `https://api.polygon.io/v2/aggs/ticker/${symbol}/range/1/day/${formattedSevenDaysAgo}/${formattedToday}?adjusted=true&sort=asc&apiKey=${import.meta.env.VITE_POLYGON_API_KEY}`
         );
 
         if (response.data && response.data.results.length > 0) {

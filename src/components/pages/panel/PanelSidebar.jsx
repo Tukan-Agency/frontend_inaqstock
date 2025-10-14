@@ -6,6 +6,11 @@ const items = [
   { to: "dashboard", label: "Dashboard", icon: "mdi:view-dashboard" },
   { to: "usuarios", label: "Usuarios", icon: "mdi:account-group" },
   { to: "solicitudes", label: "Solicitudes", icon: "mdi:clipboard-text" },
+  {
+    to: "solicitudes-verify",
+    label: "Verificaciones",
+    icon: "bitcoin-icons:verify-filled",
+  },
 ];
 
 // Botón del sidebar que navega con useNavigate y calcula "activo" sin NavLink

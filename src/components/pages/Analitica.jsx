@@ -25,7 +25,7 @@ export default function Analitica() {
   const navigate = useNavigate();
   const [selectedSymbol, setSelectedSymbol] = useState("X:BTCUSD");
 
-  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/1/day/2025-01-01/2025-12-31?apiKey=7ZDpKAA_vz3jIGp2T2POBDyYR_1RJ5xn`;
+  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/1/day/2025-01-01/2025-12-31?apiKey=${import.meta.env.VITE_POLYGON_API_KEY}`;
 
   const { data, loading, error } = useCachedData(url, async () => {
     const response = await fetch(url);

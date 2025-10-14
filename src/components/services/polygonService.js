@@ -1,20 +1,48 @@
-const API_KEY = "7ZDpKAA_vz3jIGp2T2POBDyYR_1RJ5xn";
+const API_KEY = import.meta.env.VITE_POLYGON_API_KEY; // ✅ desde .env
+
 const BASE_URL = "https://api.polygon.io/v3";
 const BASE_URL_V2 = "https://api.polygon.io/v2";
 const AGGS_URL = "https://api.polygon.io/v2/aggs";
 
+const getTodayDateKey = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+};
+
+const setLocalData = (key, data) => {
+  localStorage.setItem(key, JSON.stringify(data));
+};
+
+const getLocalData = (key) => {
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : null;
+};
+
 export const polygonService = {
-  // Obtener lista de mercados
+  // Obtener lista de mercados con caché diaria
   getMarketsList: async () => {
+    const cacheKey = "markets-cache";
+    const dateKey = "markets-date";
+    const todayKey = getTodayDateKey();
+
+    const cachedData = getLocalData(cacheKey);
+    const cachedDate = getLocalData(dateKey);
+
+    if (cachedData && cachedDate === todayKey) {
+      return cachedData;
+    }
+
     try {
       const url = `${BASE_URL}/reference/tickers?market=stocks&active=true&order=asc&limit=1000&sort=ticker&apiKey=${API_KEY}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
+      setLocalData(cacheKey, data);
+      setLocalData(dateKey, todayKey);
       return data;
     } catch (error) {
       console.error("Error fetching markets list:", error);
@@ -22,93 +50,94 @@ export const polygonService = {
     }
   },
 
-  // Obtener precio de un mercado específico
-  getMarketPrice: async (ticker) => {
-    try {
-      const url = `${AGGS_URL}/ticker/${ticker}/prev?apiKey=${API_KEY}`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Error fetching market price:", error);
-      throw error;
-    }
-  },
-
-  // Obtener snapshot de todas las criptomonedas populares
+  // Obtener snapshot de criptomonedas populares con caché diaria
   getPopularCrypto: async () => {
+    const cacheKey = "crypto-cache";
+    const dateKey = "crypto-date";
+    const todayKey = getTodayDateKey();
+
+    const cachedData = getLocalData(cacheKey);
+    const cachedDate = getLocalData(dateKey);
+
+    if (cachedData && cachedDate === todayKey) {
+      return cachedData;
+    }
+
     try {
       const url = `${BASE_URL_V2}/snapshot/locale/global/markets/crypto/tickers?apiKey=${API_KEY}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
-      // Filtrar por las más populares (mayor volumen)
-      return data.tickers?.sort((a, b) => b.day?.v - a.day?.v).slice(0, 20);
+      const sortedData = data.tickers
+        ?.sort((a, b) => b.day?.v - a.day?.v)
+        .slice(0, 30);
+
+      setLocalData(cacheKey, sortedData);
+      setLocalData(dateKey, todayKey);
+      return sortedData;
     } catch (error) {
       console.error("Error fetching popular crypto:", error);
       throw error;
     }
   },
 
-  // Obtener precios específicos de criptos populares
-  getSpecificCrypto: async () => {
+  // Obtener precio de un mercado específico (Crypto, Forex o Stocks)
+  getMarketPrice: async (ticker) => {
     try {
-      const popularTickers = ['X:BTCUSD', 'X:ETHUSD', 'X:ADAUSD', 'X:SOLUSD', 'X:DOTUSD'];
-      const promises = popularTickers.map(ticker => 
-        fetch(`${AGGS_URL}/ticker/${ticker}/prev?apiKey=${API_KEY}`)
-          .then(res => res.json())
-      );
-      
-      return Promise.all(promises);
-    } catch (error) {
-      console.error("Error fetching specific crypto:", error);
-      throw error;
-    }
-  },
+      const clean = ticker.replace(/^X:/, "").replace(/^C:/, "");
+      let url = "";
 
-  // Obtener snapshot de acciones más activas
-  getPopularStocks: async () => {
-    try {
-      const url = `${BASE_URL_V2}/snapshot/locale/us/markets/stocks/tickers?apiKey=${API_KEY}`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // --- Crypto (global) ---
+      if (ticker.startsWith("X:")) {
+        url = `${BASE_URL_V2}/snapshot/locale/global/markets/crypto/tickers/${ticker}?apiKey=${API_KEY}`;
       }
-      
+      // --- Forex ---
+      else if (ticker.startsWith("C:")) {
+        url = `${BASE_URL_V2}/snapshot/locale/global/markets/forex/tickers/${ticker}?apiKey=${API_KEY}`;
+      }
+      // --- Stocks (US) ---
+      else {
+        url = `${BASE_URL_V2}/snapshot/locale/us/markets/stocks/tickers/${clean}?apiKey=${API_KEY}`;
+      }
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP error! ${response.status}`);
+
       const data = await response.json();
-      
-      // Ordenar por volumen para obtener las más activas
-      return data.tickers?.sort((a, b) => b.day?.v - a.day?.v).slice(0, 50);
+
+      // --- Normalización universal ---
+      if (data.ticker) {
+        const t = data.ticker;
+        const current = t.lastTrade?.p || t.day?.c || 0;
+        const open = t.day?.o || t.prevDay?.o || current;
+        const change =
+          open && current ? (((current - open) / open) * 100).toFixed(2) : "0.00";
+
+        return {
+          price: current, // ✅ clave para MarketTradePanel
+          results: [
+            {
+              c: current,
+              o: open,
+              v: t.day?.v || 0,
+              h: t.day?.h,
+              l: t.day?.l,
+            },
+          ],
+          bid: t.lastQuote?.p || current,
+          ask: t.lastTrade?.p || current,
+          change,
+        };
+      }
+
+      return data;
     } catch (error) {
-      console.error("Error fetching popular stocks:", error);
-      throw error;
+      console.error("Error fetching market price:", error);
+      return { results: [], bid: 0, ask: 0, change: "0.00" };
     }
   },
-
-  // Obtener precios de acciones específicas populares
-  getSpecificStocks: async () => {
-    try {
-      const popularStocks = ['AAPL', 'TSLA', 'GOOGL', 'MSFT', 'AMZN', 'NVDA', 'META'];
-      const promises = popularStocks.map(ticker => 
-        fetch(`${AGGS_URL}/ticker/${ticker}/prev?apiKey=${API_KEY}`)
-          .then(res => res.json())
-      );
-      
-      return Promise.all(promises);
-    } catch (error) {
-      console.error("Error fetching specific stocks:", error);
-      throw error;
-    }
-  }
 };

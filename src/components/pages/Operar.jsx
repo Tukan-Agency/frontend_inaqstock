@@ -39,7 +39,7 @@ export default function Operar() {
   const [endDate, setEndDate] = useState("2025-12-31");
 
   // 👈 CAMBIO: URL simple como en el código que funcionaba
-  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/${selectedRange.range.multiplier}/${selectedRange.range.timespan}/${startDate}/${endDate}?apiKey=7ZDpKAA_vz3jIGp2T2POBDyYR_1RJ5xn`;
+  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/${selectedRange.range.multiplier}/${selectedRange.range.timespan}/${startDate}/${endDate}?apiKey=${import.meta.env.VITE_POLYGON_API_KEY}`;
 
   // 👈 CAMBIO: Usar useCachedApi como en el código que funcionaba
   const { data, loading, error } = useCachedApi(url);
