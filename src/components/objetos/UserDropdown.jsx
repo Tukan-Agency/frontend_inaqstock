@@ -208,6 +208,10 @@ export default function UserDropdown({ cuentaVerificada = false }) {
             </div>
           </DropdownItem>
 
+          
+          <DropdownItem className={classtext} >
+           <p><strong> ID: {session?.user?.sequenceId || session?.user?.user?.sequenceId || "N/A"}</strong></p>
+          </DropdownItem>
           <DropdownItem className={classtext} key="settings">
             Configuración
           </DropdownItem>

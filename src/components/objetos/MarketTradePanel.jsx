@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { Button, Input } from "@heroui/react";
+import { Button, Input, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { TradingService } from "../services/tradingService";
 
-/**
- * Panel de operación universal (Criptos, Acciones, Forex)
- * Props:
- *  - market: { symbol, price, bid, ask, ... }
- */
+// ✅ RUTAS EXACTAS SOLICITADAS
+import { TradingService } from "../services/tradingService.js";
+import { useTradingPermission } from "../../hooks/useTradingPermission.js";
+
 export default function MarketTradePanel({ market }) {
   const [quantity, setQuantity] = useState(0.01);
   const [rawQuantity, setRawQuantity] = useState("0.01");
@@ -16,7 +14,6 @@ export default function MarketTradePanel({ market }) {
   const minQty = 0.01;
   const step = 0.01;
 
-  // --- Normaliza cantidad ---
   const normalizeQuantity = useCallback(
     (val) => {
       if (val === "" || val === null || val === undefined) return "";
@@ -47,10 +44,6 @@ export default function MarketTradePanel({ market }) {
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") executeTrade("Compra");
-  };
-
   const handleBlur = () => {
     if (rawQuantity === "" || Number(rawQuantity) < minQty) {
       setQuantity(minQty);
@@ -58,11 +51,9 @@ export default function MarketTradePanel({ market }) {
     }
   };
 
-  // --- Lógica de precios ---
   const priceNumber = parseFloat(market?.price);
   const hasValidPrice = !Number.isNaN(priceNumber) && priceNumber > 0;
 
-  // Preferir bid/ask si existen
   const bid = parseFloat(market?.bid) || priceNumber || 0;
   const ask = parseFloat(market?.ask) || priceNumber || 0;
 
@@ -72,53 +63,66 @@ export default function MarketTradePanel({ market }) {
   const sellDisplay = sellPriceNumber ? sellPriceNumber.toFixed(2) : "--";
   const buyDisplay = buyPriceNumber ? buyPriceNumber.toFixed(2) : "--";
 
-  const calculateUsdValue = () => {
-    if (!hasValidPrice) return "0.00";
-    return (quantity * priceNumber).toFixed(2);
-  };
+  const { canTrade, reason, requiredCost, capital, mode, refresh } = useTradingPermission({
+    quantity,
+    price: ask > 0 ? ask : priceNumber || 0,
+  });
 
-  const canTrade = hasValidPrice && quantity >= minQty && !isLoading;
-
-  // --- Ejecutar operación ---
   const executeTrade = async (type) => {
     if (!hasValidPrice) {
-      console.warn("No hay precio válido para este símbolo.");
+      addToast({
+        title: "Precio inválido",
+        description: "No hay precio válido para este símbolo.",
+        color: "warning",
+        duration: 2500,
+      });
+      return;
+    }
+
+    // ✅ LÓGICA NUEVA: Si es demo y no tiene capital, abrir modal manualmente
+    if (!canTrade && mode === "demo" && Number(capital) < Number(requiredCost)) {
+       window.dispatchEvent(new Event("open-demo-funding"));
+       return;
+    }
+
+    if (!canTrade) {
+      addToast({
+        title: "No puedes operar",
+        description: reason,
+        color: "danger",
+        duration: 3000,
+      });
       return;
     }
 
     setIsLoading(true);
     try {
-      const tradeData = {
+      const openPrice = type === "Compra" ? buyPriceNumber : sellPriceNumber;
+
+      const savedPosition = await TradingService.savePosition({
         symbol: market.symbol,
         volume: quantity,
         type,
-        openPrice: type === "Compra" ? buyPriceNumber : sellPriceNumber,
-        currentPrice: priceNumber,
-        openTime: new Date().toISOString(),
-        tp: "-",
-        sl: "-",
-        swap: 0.0,
-        commission: 0.0,
-        profit: "0.00",
-        profitPercentage: "0.00",
-        source: market.market || "manual",
-      };
+        openPrice,
+        mode: mode // <--- Campo clave
+      });
 
-      // Guardar en backend (simulación o real)
-      const savedPosition = await TradingService.savePosition(tradeData);
+      window.dispatchEvent(new CustomEvent("trade-executed", { detail: savedPosition }));
 
-      // Disparar evento global para que la tabla se actualice
-      window.dispatchEvent(
-        new CustomEvent("trade-executed", { detail: savedPosition })
-      );
+      setTimeout(refresh, 500);
     } catch (error) {
       console.error("Error al ejecutar trade:", error);
+      addToast({
+        title: "Error",
+        description: "No se pudo ejecutar la operación.",
+        color: "danger",
+        duration: 2800,
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- Re-render si llega nuevo precio ---
   useEffect(() => {
     if (hasValidPrice && (rawQuantity === "" || Number(rawQuantity) < minQty)) {
       setQuantity(minQty);
@@ -126,16 +130,27 @@ export default function MarketTradePanel({ market }) {
     }
   }, [hasValidPrice, rawQuantity, minQty]);
 
-  // --- Render principal ---
+  const usdValue = hasValidPrice ? (quantity * priceNumber).toFixed(2) : "0.00";
+  
+  // Deshabilitar botones solo si es REAL y no puede operar (o cargando)
+  // Si es DEMO, dejamos habilitado para que puedan hacer clic y ver el modal
+  const disabledTrade = (mode === "real" && !canTrade) || isLoading;
+
   return (
     <div className="p-3 bg-default-50 rounded-md">
+      {mode === "real" && !canTrade && (
+        <div className="mb-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+          {reason}
+        </div>
+      )}
+
       <div className="flex gap-2 mb-4">
-        {/* VENTA */}
         <Button
           className="flex-1 bg-[#cb2e47] text-white hover:bg-[#cb2e47]/90 h-14"
           onClick={() => executeTrade("Venta")}
           isLoading={isLoading}
-          isDisabled={!canTrade}
+          isDisabled={disabledTrade}
+          title={!canTrade ? reason : undefined}
         >
           <span className="leading-tight">
             <b>VENTA</b> <br />
@@ -143,12 +158,12 @@ export default function MarketTradePanel({ market }) {
           </span>
         </Button>
 
-        {/* COMPRA */}
         <Button
           className="flex-1 bg-[#06726b] text-white hover:bg-[#06726b]/90 h-14"
           onClick={() => executeTrade("Compra")}
           isLoading={isLoading}
-          isDisabled={!canTrade}
+          isDisabled={disabledTrade}
+          title={!canTrade ? reason : undefined}
         >
           <span className="leading-tight">
             <b>COMPRA</b> <br />
@@ -157,16 +172,15 @@ export default function MarketTradePanel({ market }) {
         </Button>
       </div>
 
-      {/* Input cantidad */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <Button
             isIconOnly
             size="sm"
             variant="flat"
-            onClick={() => handleQuantityChange(-step)}
+            onClick={() => quantity > minQty && handleQuantityChange(-step)}
             className="bg-default-100 rounded-lg w-8 h-8 min-w-8"
-            isDisabled={isLoading || quantity <= minQty}
+            isDisabled={isLoading || quantity <= minQty || disabledTrade}
           >
             <Icon icon="material-symbols:remove" />
           </Button>
@@ -176,13 +190,13 @@ export default function MarketTradePanel({ market }) {
             value={rawQuantity}
             onChange={handleQuantityInput}
             onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
             type="text"
             size="sm"
             variant="bordered"
             className="flex-1"
             inputMode="decimal"
             description={`Mín: ${minQty.toFixed(2)} • Paso: ${step.toFixed(2)}`}
+            isDisabled={disabledTrade}
           />
 
           <Button
@@ -191,14 +205,23 @@ export default function MarketTradePanel({ market }) {
             variant="flat"
             onClick={() => handleQuantityChange(step)}
             className="bg-default-100 rounded-lg w-8 h-8 min-w-8"
-            isDisabled={isLoading}
+            isDisabled={isLoading || disabledTrade}
           >
             <Icon icon="material-symbols:add" />
           </Button>
         </div>
 
         <div className="text-center text-xs text-default-500 -mt-1">
-          ≈ {calculateUsdValue()} USD
+          ≈ {usdValue} USD
+        </div>
+
+        <div className="text-[11px] mt-2 grid grid-cols-2 gap-y-1 text-default-600">
+          <span>Capital disponible ({mode === 'demo' ? 'Demo' : 'Real'}):</span>
+          <span className={Number(capital) >= Number(requiredCost) ? "text-success-600" : "text-danger-600"}>
+            {Number(capital).toFixed(2)}
+          </span>
+          <span>Costo requerido:</span>
+          <span>{Number(requiredCost).toFixed(2)}</span>
         </div>
       </div>
     </div>

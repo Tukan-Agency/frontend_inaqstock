@@ -37,14 +37,19 @@ export default function RegisterForm({
     const selected = countryList.find((c) => c.code === code);
     if (!selected) return;
     setSelectedCountryCode(code);
+        const flagUrl = `https://flagcdn.com/${String(selected.code || "").toLowerCase()}.svg`;
+
     setFormData((prev) => ({
       ...prev,
       country: {
         name: selected.name,
-        code: selected.ext,
-        flag: selected.flag,
+        code: selected.ext, // prefijo telefónico
+        flag: flagUrl,      // URL correcta de la bandera
       },
-      currency: { name: selected.currency },
+      currency: {
+        name: selected.currency,
+        symbol: selected.symbol || selected.currency, // opcional, si tu JSON tiene symbol
+      },
     }));
   };
 

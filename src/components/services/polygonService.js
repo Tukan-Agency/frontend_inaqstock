@@ -1,143 +1,177 @@
-const API_KEY = import.meta.env.VITE_POLYGON_API_KEY; // ✅ desde .env
+const API_KEY = import.meta.env.VITE_POLYGON_API_KEY;
+const BASE = "https://api.polygon.io";
 
-const BASE_URL = "https://api.polygon.io/v3";
-const BASE_URL_V2 = "https://api.polygon.io/v2";
-const AGGS_URL = "https://api.polygon.io/v2/aggs";
+// Cache simple en memoria para evitar rate limit
+const _cache = new Map();
+function fromCache(key) {
+  const hit = _cache.get(key);
+  if (!hit) return null;
+  if (hit.expireAt && Date.now() > hit.expireAt) {
+    _cache.delete(key);
+    return null;
+  }
+  return hit.data;
+}
+function toCache(key, data, ttlMs = 3000) {
+  _cache.set(key, { data, expireAt: ttlMs ? Date.now() + ttlMs : 0 });
+}
 
-const getTodayDateKey = () => {
-  const today = new Date();
-  return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-};
+async function fetchJSON(url, { cacheKey, ttlMs } = {}) {
+  if (cacheKey) {
+    const cached = fromCache(cacheKey);
+    if (cached) return cached;
+  }
+  const res = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Polygon ${res.status}: ${text || url}`);
+  }
+  const json = await res.json();
+  if (cacheKey) toCache(cacheKey, json, ttlMs);
+  return json;
+}
 
-const setLocalData = (key, data) => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
-
-const getLocalData = (key) => {
-  const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : null;
-};
+// Detección de tipo de símbolo
+function symType(symbol = "") {
+  if (symbol.startsWith("X:")) return "crypto";
+  if (symbol.startsWith("C:")) return "forex";
+  return "stock";
+}
 
 export const polygonService = {
-  // Obtener lista de mercados con caché diaria
-  getMarketsList: async () => {
-    const cacheKey = "markets-cache";
-    const dateKey = "markets-date";
-    const todayKey = getTodayDateKey();
+  // Prev close: devuelve el JSON crudo con results[0] (o,h,l,c,v)
+  // Esto es lo que ya usas en MarketList.
+  async getMarketPrice(symbol) {
+    const url = `${BASE}/v2/aggs/ticker/${symbol}/prev?adjusted=true&apiKey=${API_KEY}`;
+    const cacheKey = `prev:${symbol}`;
+    return fetchJSON(url, { cacheKey, ttlMs: 60_000 }); // 1 min de cache es suficiente para prev
+  },
 
-    const cachedData = getLocalData(cacheKey);
-    const cachedDate = getLocalData(dateKey);
+  // Agregados para velas (por si quieres centralizar lo del chart)
+  async getAggregates({ symbol, multiplier = 1, timespan = "day", from, to, adjusted = true, sort = "asc", limit = 50000 }) {
+    const url = `${BASE}/v2/aggs/ticker/${symbol}/range/${multiplier}/${timespan}/${from}/${to}?adjusted=${adjusted}&sort=${sort}&limit=${limit}&apiKey=${API_KEY}`;
+    const cacheKey = `aggs:${symbol}:${multiplier}:${timespan}:${from}:${to}:${adjusted}:${sort}:${limit}`;
+    return fetchJSON(url, { cacheKey, ttlMs: 15_000 });
+  },
 
-    if (cachedData && cachedDate === todayKey) {
-      return cachedData;
+  // Precio "en vivo" (Number). Usa los endpoints adecuados por tipo de activo.
+  async getRealtimePrice(symbol) {
+    const kind = symType(symbol);
+    let url;
+    let cacheKey;
+
+    if (kind === "crypto") {
+      // Snapshot por ticker (incluye lastTrade y lastQuote)
+      url = `${BASE}/v2/snapshot/locale/global/markets/crypto/tickers/${symbol}?apiKey=${API_KEY}`;
+      cacheKey = `snap:crypto:${symbol}`;
+      const json = await fetchJSON(url, { cacheKey, ttlMs: 3000 });
+      const t = json?.ticker;
+      const price =
+        t?.lastTrade?.p ??
+        t?.lastQuote?.p ?? // algunos snapshots traen p (mid) o bid/ask por separado
+        t?.lastQuote?.ask ??
+        t?.lastQuote?.bid ??
+        t?.day?.c ??
+        null;
+      if (price == null) throw new Error("Precio no disponible (crypto)");
+      return Number(price);
     }
 
+    if (kind === "forex") {
+      // Snapshot por ticker (FX)
+      url = `${BASE}/v2/snapshot/locale/global/markets/forex/tickers/${symbol}?apiKey=${API_KEY}`;
+      cacheKey = `snap:forex:${symbol}`;
+      const json = await fetchJSON(url, { cacheKey, ttlMs: 3000 });
+      const t = json?.ticker;
+      const price =
+        t?.lastTrade?.p ??
+        t?.lastQuote?.p ??
+        t?.lastQuote?.ask ??
+        t?.lastQuote?.bid ??
+        t?.day?.c ??
+        null;
+      if (price == null) throw new Error("Precio no disponible (forex)");
+      return Number(price);
+    }
+
+    // Acciones: último trade; fallback a snapshot si falla
     try {
-      const url = `${BASE_URL}/reference/tickers?market=stocks&active=true&order=asc&limit=1000&sort=ticker&apiKey=${API_KEY}`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setLocalData(cacheKey, data);
-      setLocalData(dateKey, todayKey);
-      return data;
-    } catch (error) {
-      console.error("Error fetching markets list:", error);
-      throw error;
+      url = `${BASE}/v2/last/trade/${symbol}?apiKey=${API_KEY}`;
+      cacheKey = `lasttrade:stock:${symbol}`;
+      const json = await fetchJSON(url, { cacheKey, ttlMs: 3000 });
+      const price = json?.results?.p ?? json?.last?.price ?? null;
+      if (price == null) throw new Error("sin last trade");
+      return Number(price);
+    } catch {
+      const snapUrl = `${BASE}/v2/snapshot/locale/us/markets/stocks/tickers/${symbol}?apiKey=${API_KEY}`;
+      const json = await fetchJSON(snapUrl, { cacheKey: `snap:stock:${symbol}`, ttlMs: 3000 });
+      const t = json?.ticker;
+      const price =
+        t?.lastTrade?.p ??
+        t?.lastQuote?.p ??
+        t?.lastQuote?.ask ??
+        t?.lastQuote?.bid ??
+        t?.day?.c ??
+        null;
+      if (price == null) throw new Error("Precio no disponible (stock)");
+      return Number(price);
     }
   },
 
-  // Obtener snapshot de criptomonedas populares con caché diaria
-  getPopularCrypto: async () => {
-    const cacheKey = "crypto-cache";
-    const dateKey = "crypto-date";
-    const todayKey = getTodayDateKey();
+  // Bid/ask “vivo” (si está disponible en snapshot/last quote)
+  // Devuelve { bid, ask, price } (numbers o null).
+  async getRealtimeQuote(symbol) {
+    const kind = symType(symbol);
+    let url, cacheKey;
 
-    const cachedData = getLocalData(cacheKey);
-    const cachedDate = getLocalData(dateKey);
-
-    if (cachedData && cachedDate === todayKey) {
-      return cachedData;
+    if (kind === "crypto") {
+      url = `${BASE}/v2/snapshot/locale/global/markets/crypto/tickers/${symbol}?apiKey=${API_KEY}`;
+      cacheKey = `snapq:crypto:${symbol}`;
+      const json = await fetchJSON(url, { cacheKey, ttlMs: 3000 });
+      const q = json?.ticker?.lastQuote;
+      const t = json?.ticker?.lastTrade;
+      return {
+        bid: typeof q?.bid === "number" ? q.bid : null,
+        ask: typeof q?.ask === "number" ? q.ask : null,
+        price: typeof t?.p === "number" ? t.p : null,
+      };
     }
 
-    try {
-      const url = `${BASE_URL_V2}/snapshot/locale/global/markets/crypto/tickers?apiKey=${API_KEY}`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const sortedData = data.tickers
-        ?.sort((a, b) => b.day?.v - a.day?.v)
-        .slice(0, 30);
-
-      setLocalData(cacheKey, sortedData);
-      setLocalData(dateKey, todayKey);
-      return sortedData;
-    } catch (error) {
-      console.error("Error fetching popular crypto:", error);
-      throw error;
+    if (kind === "forex") {
+      url = `${BASE}/v2/snapshot/locale/global/markets/forex/tickers/${symbol}?apiKey=${API_KEY}`;
+      cacheKey = `snapq:forex:${symbol}`;
+      const json = await fetchJSON(url, { cacheKey, ttlMs: 3000 });
+      const q = json?.ticker?.lastQuote;
+      const t = json?.ticker?.lastTrade;
+      return {
+        bid: typeof q?.bid === "number" ? q.bid : null,
+        ask: typeof q?.ask === "number" ? q.ask : null,
+        price: typeof t?.p === "number" ? t.p : null,
+      };
     }
-  },
 
-  // Obtener precio de un mercado específico (Crypto, Forex o Stocks)
-  getMarketPrice: async (ticker) => {
+    // Acciones: NBBO (bid/ask) si está disponible en tu plan
     try {
-      const clean = ticker.replace(/^X:/, "").replace(/^C:/, "");
-      let url = "";
-
-      // --- Crypto (global) ---
-      if (ticker.startsWith("X:")) {
-        url = `${BASE_URL_V2}/snapshot/locale/global/markets/crypto/tickers/${ticker}?apiKey=${API_KEY}`;
-      }
-      // --- Forex ---
-      else if (ticker.startsWith("C:")) {
-        url = `${BASE_URL_V2}/snapshot/locale/global/markets/forex/tickers/${ticker}?apiKey=${API_KEY}`;
-      }
-      // --- Stocks (US) ---
-      else {
-        url = `${BASE_URL_V2}/snapshot/locale/us/markets/stocks/tickers/${clean}?apiKey=${API_KEY}`;
-      }
-
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP error! ${response.status}`);
-
-      const data = await response.json();
-
-      // --- Normalización universal ---
-      if (data.ticker) {
-        const t = data.ticker;
-        const current = t.lastTrade?.p || t.day?.c || 0;
-        const open = t.day?.o || t.prevDay?.o || current;
-        const change =
-          open && current ? (((current - open) / open) * 100).toFixed(2) : "0.00";
-
-        return {
-          price: current, // ✅ clave para MarketTradePanel
-          results: [
-            {
-              c: current,
-              o: open,
-              v: t.day?.v || 0,
-              h: t.day?.h,
-              l: t.day?.l,
-            },
-          ],
-          bid: t.lastQuote?.p || current,
-          ask: t.lastTrade?.p || current,
-          change,
-        };
-      }
-
-      return data;
-    } catch (error) {
-      console.error("Error fetching market price:", error);
-      return { results: [], bid: 0, ask: 0, change: "0.00" };
+      url = `${BASE}/v2/last/nbbo/${symbol}?apiKey=${API_KEY}`;
+      cacheKey = `nbbo:${symbol}`;
+      const json = await fetchJSON(url, { cacheKey, ttlMs: 3000 });
+      const r = json?.results || json;
+      return {
+        bid: typeof r?.bidPrice === "number" ? r.bidPrice : null,
+        ask: typeof r?.askPrice === "number" ? r.askPrice : null,
+        price: null,
+      };
+    } catch {
+      // Fallback a snapshot
+      const snapUrl = `${BASE}/v2/snapshot/locale/us/markets/stocks/tickers/${symbol}?apiKey=${API_KEY}`;
+      const json = await fetchJSON(snapUrl, { cacheKey: `snapq:stock:${symbol}`, ttlMs: 3000 });
+      const q = json?.ticker?.lastQuote;
+      const t = json?.ticker?.lastTrade;
+      return {
+        bid: typeof q?.bid === "number" ? q.bid : null,
+        ask: typeof q?.ask === "number" ? q.ask : null,
+        price: typeof t?.p === "number" ? t.p : null,
+      };
     }
   },
 };

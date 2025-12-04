@@ -6,7 +6,7 @@ import { useSession } from "../hooks/use-session.jsx";
 
 export default function Home() {
   const [formData, setFormData] = useState({
-    email: "", // Asegúrate de que email y password estén inicializados
+    email: "",
     password: "",
   });
   const [error, setError] = useState(null);
@@ -16,15 +16,15 @@ export default function Home() {
     if (errs.message === "Network Error") {
       return "Algo salió mal. Contacte soporte.";
     } else {
-      const errbackend = errs.response.data.message;
+      const errbackend = errs.response?.data?.message || "Error en el servidor";
       return errbackend;
     }
   }
 
   const resetForm = () => {
     setFormData({
-      email: "",  
-      password: "",  
+      email: "",
+      password: "",
     });
   };
 
@@ -57,14 +57,14 @@ export default function Home() {
         return window.location.replace("/operar");
       }
       if (res.data.status === "error") {
-        setError(res.data.menssage);
-        resetForm(); // Solo reseteamos el formulario si hay un error 401
+        setError(res.data.menssage || "Credenciales inválidas");
+        resetForm();
       } else {
         setError("Error en el servidor!");
       }
     } catch (e) {
       setError(erorres(e));
-      resetForm(); // Reseteamos el formulario si hay un error de autenticación
+      resetForm();
     } finally {
       setIsLoading(false);
     }
@@ -73,6 +73,29 @@ export default function Home() {
   const clearError = () => {
     setError(null);
   };
+
+  // Simular click en el logo 1s después de montar
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+
+    const selector ='.logo-inaq';
+
+    const clickLogo = () => {
+      const el = document.querySelector(selector);
+      if (el) {
+        if (typeof el.click === "function") {
+          el.click();
+        } else {
+          el.dispatchEvent(
+            new MouseEvent("click", { bubbles: true, cancelable: true, view: window })
+          );
+        }
+      }
+    };
+
+    const t = setTimeout(clickLogo, 3000);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div className="text-foreground bg-background h-[100vh]">

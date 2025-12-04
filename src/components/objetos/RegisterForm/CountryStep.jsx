@@ -16,26 +16,15 @@ export default function CountryStep({
       setError("Por favor selecciona un país válido.");
       return;
     }
-
     setError("");
-    nextStep();
+    nextStep?.();
   };
 
   const handleSelectionChange = (key) => {
-    const selectedCountry = countries.find((c) => c.code === key);
-
-    if (selectedCountry) {
-      handleCountryChange(
-        key,
-        {
-          code: selectedCountry.ext,
-          name: selectedCountry.name,
-        },
-        {
-          name: selectedCountry.currency,
-          symbol: selectedCountry.currency,
-        }
-      );
+    // Ahora solo pasamos el código ISO (ej: "EC")
+    const selected = countries.find((c) => c.code === key);
+    if (selected) {
+      handleCountryChange(key);
     }
   };
 

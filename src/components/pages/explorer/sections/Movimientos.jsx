@@ -14,9 +14,11 @@ import {
 import { Icon } from "@iconify/react";
 import { listUserMovements } from "../../../services/movements.service";
 import { useSession } from "../../../../hooks/use-session";
+import { useAccountMode } from "../../../../context/AccountModeContext"; // ✅ IMPORTAR CONTEXTO
 
 export default function Movimientos() {
   const { session } = useSession();
+  const { mode } = useAccountMode(); // ✅ OBTENER MODO
 
   // Toma el id del usuario de la sesión (ajusta si tu sesión usa otra clave)
   const clientId = useMemo(
@@ -29,13 +31,14 @@ export default function Movimientos() {
     [session]
   );
   console.log("clientId", clientId);
+  
   // Loader con tiempo base
   const BASE_DELAY_MS = 300;
   const [isLoading, setIsLoading] = useState(true);
   const [movs, setMovs] = useState([]);
   const [error, setError] = useState(null);
 
-  // Carga real desde API (backend old usando x-clientId)
+  // Carga real desde API
   useEffect(() => {
     let cancelled = false;
 
@@ -56,7 +59,7 @@ export default function Movimientos() {
         }
 
         const [items] = await Promise.all([
-          listUserMovements({ clientId }),
+          listUserMovements({ clientId, mode }), // ✅ PASAR MODO AL SERVICIO
           minDelay,
         ]);
 
@@ -101,7 +104,7 @@ export default function Movimientos() {
     return () => {
       cancelled = true;
     };
-  }, [clientId]);
+  }, [clientId, mode]); // ✅ AGREGAR mode A DEPENDENCIAS
 
   const formatCurrency = (n) =>
     Number(n || 0).toLocaleString("es-EC", {

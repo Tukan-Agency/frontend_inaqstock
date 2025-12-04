@@ -10,8 +10,55 @@ import {
   Tooltip,
   Spinner,
   Pagination,
+  Skeleton,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
+
+function computeSign(profitStr, pctStr) {
+  const pct = Number(pctStr);
+  if (Number.isFinite(pct) && pct !== 0) return pct > 0 ? 1 : -1;
+  const prof = Number(profitStr);
+  if (prof > 0) return 1;
+  if (prof < 0) return -1;
+  return 0;
+}
+
+function formatWithSign(value, sign) {
+  const num = Number(value);
+  const abs = Math.abs(Number.isFinite(num) ? num : 0).toFixed(2);
+  if (sign > 0) return `+${abs}`;
+  if (sign < 0) return `-${abs}`;
+  return abs;
+}
+
+// Heurística para mostrar Skeleton de PnL mientras aún no hay datos “reales”
+function isPnLPending(position) {
+  // Caso explícito si el backend/estado marca que aún no está listo
+  if (position?.pnlReady === false || position?.profitLoading === true) return true;
+
+  // Si no existe profit aún
+  if (position?.profit === undefined || position?.profit === null) return true;
+
+  // Si todo está en cero y el precio actual == apertura y la posición es “muy reciente”, asumimos que todavía no llegó el primer tick
+  const prof = Number(position.profit);
+  const pct = Number(position.profitPercentage);
+  const open = Number(position.openPrice);
+  const cur = Number(position.currentPrice);
+  const recentSecs =
+    position?.openTime ? (Date.now() - new Date(position.openTime).getTime()) / 1000 : Infinity;
+
+  const looksUninitialized =
+    Number.isFinite(prof) &&
+    Number.isFinite(pct) &&
+    prof === 0 &&
+    pct === 0 &&
+    Number.isFinite(open) &&
+    Number.isFinite(cur) &&
+    open === cur &&
+    recentSecs < 20; // 20s desde que se abrió la operación
+
+  return looksUninitialized;
+}
 
 export default function OpenPositionsTable({ positions = [], onClosePosition, isLoading }) {
   const columns = [
@@ -58,19 +105,39 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
             </span>
           </div>
         );
+
       case "profit": {
-        const value = Number(position.profit);
-        const isProfit = !isNaN(value) && value >= 0;
+        // Mostrar Skeleton mientras el PnL “real” aún no llega
+        if (isPnLPending(position)) {
+          return (
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-14 rounded-md" />
+              <Skeleton className="h-3 w-10 rounded-md" />
+            </div>
+          );
+        }
+
+        const sign = computeSign(position.profit, position.profitPercentage);
+        const colorClass =
+          sign > 0 ? "text-success-600" : sign < 0 ? "text-danger-600" : "text-default-600";
+
+        const profitDisplay = formatWithSign(position.profit, sign);
+
+        const pctNum = Number(position.profitPercentage);
+        const pctSign =
+          Number.isFinite(pctNum) && pctNum !== 0 ? (pctNum > 0 ? 1 : -1) : sign;
+        const pctDisplay = Number.isFinite(pctNum)
+          ? `${pctSign > 0 ? "+" : pctSign < 0 ? "-" : ""}${Math.abs(pctNum).toFixed(2)}%`
+          : null;
+
         return (
-          <span className={isProfit ? "text-success-600" : "text-danger-600"}>
-            {isProfit ? "+" : ""}
-            {position.profit}
-            {position.profitPercentage !== undefined && (
-              <span className="text-xs ml-1">({position.profitPercentage}%)</span>
-            )}
+          <span className={colorClass}>
+            {profitDisplay}
+            {pctDisplay && <span className="text-xs ml-1">({pctDisplay})</span>}
           </span>
         );
       }
+
       case "actions":
         return (
           <div className="flex items-center gap-2">
@@ -90,10 +157,13 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
             </Button>
           </div>
         );
+
       case "openTime":
         return new Date(position.openTime).toLocaleString();
+
       case "tp_sl":
         return `${position.tp}/${position.sl}`;
+
       default:
         return position[columnKey];
     }

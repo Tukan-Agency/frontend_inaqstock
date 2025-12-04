@@ -1,85 +1,119 @@
-// src/contexts/BalanceContext.jsx
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { io } from 'socket.io-client';
 
-const BalanceContext = createContext();
+const BalanceContext = createContext(null);
 
 export const useBalance = () => {
-  const context = useContext(BalanceContext);
-  if (!context) {
-    throw new Error('useBalance debe usarse dentro de BalanceProvider');
-  }
-  return context;
+  const ctx = useContext(BalanceContext);
+  if (!ctx) throw new Error('useBalance debe usarse dentro de BalanceProvider');
+  return ctx;
 };
 
 export const BalanceProvider = ({ children }) => {
   const [balances, setBalances] = useState({
-    balance: 0,
-    capital: 0,
-    ganancias: 0,
-    margen: 0
+    real: { capital: 0, balance: 0, margen: 0, ganancias: 0, capitalLibre: 0 },
+    demo: { capital: 0, balance: 0, margen: 0, ganancias: 0, capitalLibre: 0 }
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Función para obtener balances del backend
-  const fetchBalances = async () => {
+  // 1. Carga inicial de balances vía REST
+  const fetchBalances = useCallback(async () => {
+    const base = import.meta.env.VITE_API_URL;
     try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch(import.meta.env.VITE_API_URL + '/api/balance', {
+      const res = await fetch(base + '/api/balance', {
         method: 'GET',
-        credentials: 'include', // Para enviar cookies
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
       });
-
-      if (!response.ok) {
-        throw new Error('Error al obtener balances');
+      const json = await res.json();
+      if (json?.success && json?.data) {
+        setBalances({
+          real: json.data.real || {},
+          demo: json.data.demo || {}
+        });
       }
-
-      const data = await response.json();
-      
-      if (data.success) {
-        setBalances(data.data);
-      } else {
-        throw new Error(data.message || 'Error desconocido');
-      }
-    } catch (err) {
-      console.error('Error fetching balances:', err);
-      setError(err.message);
+    } catch (e) {
+      console.error("Error fetchBalances:", e);
+      setError(e.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Cargar balances al montar el componente
-  useEffect(() => {
-    fetchBalances();
   }, []);
 
-  // Actualizar balances cada 30 segundos si la página está visible
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchBalances();
+  // 2. Obtener ID de usuario desde la API (CORREGIDO: /api/auth/session)
+  const fetchUserId = async () => {
+    try {
+      const base = import.meta.env.VITE_API_URL;
+      // ✅ RUTA CORREGIDA: Apuntando a authRouter
+      const res = await fetch(base + '/api/auth/session', { 
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!res.ok) {
+        console.warn(`Error obteniendo sesión: ${res.status}`);
+        return null;
       }
-    }, 30000); // 30 segundos
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const value = {
-    balances,
-    loading,
-    error,
-    fetchBalances, // Para actualizar manualmente
-    refreshBalances: fetchBalances // Alias más claro
+      
+      const data = await res.json();
+      // Tu endpoint devuelve el ID en data.id o data._id o data.user._id
+      return data.id || data._id || (data.user && data.user._id);
+    } catch (e) {
+      console.error("Error obteniendo sesión para socket:", e);
+      return null;
+    }
   };
+
+  useEffect(() => {
+    // Cargar datos iniciales
+    fetchBalances();
+
+    // Conectar Socket.IO
+    const socket = io(import.meta.env.VITE_API_URL, {
+      withCredentials: true, // Envía cookies (incluido token)
+      transports: ['websocket', 'polling'],
+      path: '/socket.io/',
+      reconnectionAttempts: 5
+    });
+
+    socket.on('connect', async () => {
+      console.log("🟢 Socket conectado (ID:", socket.id + ")");
+
+      // Obtener ID real desde el backend (ya que no podemos leer la cookie httpOnly)
+      const userId = await fetchUserId();
+      
+      if (userId) {
+        console.log("📤 Enviando join_room para:", userId);
+        socket.emit('join_room', userId);
+      } else {
+        console.warn("⚠️ No se pudo obtener ID de usuario. El socket no recibirá actualizaciones.");
+      }
+    });
+
+    // Escuchar actualizaciones de balance
+    socket.on('balance_update', (newData) => {
+      console.log("⚡ Balance actualizado:", newData);
+      setBalances(prev => ({
+        ...prev,
+        real: newData.real || prev.real,
+        demo: newData.demo || prev.demo
+      }));
+    });
+
+    socket.on('connect_error', (err) => {
+      console.warn("⚠️ Error conexión socket:", err.message);
+    });
+
+    // Limpieza al desmontar
+    return () => {
+      socket.disconnect();
+    };
+  }, [fetchBalances]);
 
   return (
-    <BalanceContext.Provider value={value}>
+    <BalanceContext.Provider value={{ balances, loading, error, refresh: fetchBalances }}>
       {children}
     </BalanceContext.Provider>
   );

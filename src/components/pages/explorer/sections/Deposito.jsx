@@ -1,20 +1,28 @@
 import React, { useState, useMemo } from "react";
-import {
-  Button,
-  Select,
-  SelectItem,
-  Input,
-  Card,
-  CardBody,
-  addToast,
-} from "@heroui/react";
+import { Button, Select, SelectItem, Input, Card, CardBody, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
+import { useSession } from "../../../../hooks/use-session.jsx";
+import { requestsService } from "../../../services/requests.service.js";
 
 export default function Deposito() {
   const navigate = useNavigate();
+  const { session } = useSession();
 
-  // Diccionario de países → bancos (igual al del proyecto anterior)
+  const clientId =
+    session?.user?.clientId ||
+    session?.user?.id ||
+    session?.user?._id ||
+    session?.user?.uid ||
+    "";
+  const clientName =
+    session?.user?.name ||
+    session?.user?.fullName ||
+    session?.user?.displayName ||
+    session?.user?.email?.split("@")[0] ||
+    "Usuario";
+
+  // País → bancos (como legacy)
   const bankData = useMemo(
     () => ({
       Ecuador: [
@@ -79,31 +87,58 @@ export default function Deposito() {
 
   const countryList = useMemo(() => Object.keys(bankData), [bankData]);
 
-  const [country, setCountry] = useState(""); // país seleccionado
-  const [bank, setBank] = useState(""); // banco seleccionado
-  const [amount, setAmount] = useState(""); // monto solicitado
+  const [country, setCountry] = useState("");
+  const [bank, setBank] = useState("");
+  const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const bankOptions = country ? bankData[country] ?? [] : [];
   const canSubmit = country && bank && Number(amount) > 0;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit || isSubmitting) return;
 
+    if (!clientId) {
+      addToast({
+        title: "Sesión requerida",
+        description: "No pudimos identificar tu usuario. Inicia sesión nuevamente.",
+        color: "warning",
+        duration: 3000,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
+    try {
+      // requestType “Deposito” (legacy) — numberAccount e ibanAccount vacíos como en el proyecto anterior
+      await requestsService.createDeposit({
+        clientId,
+        clientName,
+        bankName: bank,         // banco elegido
+        requestedValue: Number(amount),
+      });
 
-    // Aquí puedes hacer tu llamada al backend. Simulamos éxito inmediato.
-    addToast({
-      title: "Solicitud enviada",
-      description: "Tu solicitud de depósito ha sido enviada correctamente.",
-      color: "success",
-      duration: 3000,
-    });
+      addToast({
+        title: "Solicitud enviada",
+        description: "Tu solicitud de depósito ha sido enviada correctamente.",
+        color: "success",
+        duration: 2400,
+      });
 
-    setTimeout(() => {
-      navigate("/explorar");
-    }, 3000);
+      setTimeout(() => {
+        navigate("/explorar");
+      }, 2400);
+    } catch (err) {
+      addToast({
+        title: "Error",
+        description: err?.message || "No se pudo enviar la solicitud de depósito.",
+        color: "danger",
+        duration: 3200,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -111,28 +146,22 @@ export default function Deposito() {
       <Card className="shadow-none rounded-3xl max-w-xl m-auto">
         <CardBody className="px-2 sm:px-6 py-4">
           <h1 className="text-2xl font-semibold tracking-wide">DEPÓSITO</h1>
-          <p className="mt-1 text-[15px] text-[#8D8D8D] dark:text-default-400">
-            Aquí podrás realizar tu depósito
-          </p>
+          <p className="mt-1 text-[15px] text-[#8D8D8D] dark:text-default-400">Aquí podrás realizar tu depósito</p>
 
-          {/* Tile visual de Banco (no interactivo), como en la maqueta */}
+          {/* Tile visual de Banco */}
           <div className="mt-6">
             <div className="inline-flex flex-col items-center gap-2 rounded-2xl border border-[#7fb1c9] px-5 py-4 w-[116px]">
               <div className="w-14 h-14 rounded-md flex items-center justify-center bg-[#e6f0f5]">
                 <Icon icon="mdi:bank" width={28} color="#277fa0" />
               </div>
-              <span className="text-[15px] font-medium text-[#00689B]">
-                Banco
-              </span>
+              <span className="text-[15px] font-medium text-[#00689B]">Banco</span>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-6">
             {/* País */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold tracking-wide">
-                SELECCIONA TU PAÍS
-              </label>
+              <label className="text-sm font-semibold tracking-wide">SELECCIONA TU PAÍS</label>
               <Select
                 aria-label="Selecciona tu país"
                 placeholder="Seleccionar país"
@@ -140,23 +169,14 @@ export default function Deposito() {
                 onSelectionChange={(keys) => {
                   const value = Array.from(keys)[0] || "";
                   setCountry(value);
-                  setBank(""); // reset banco al cambiar país
+                  setBank("");
                 }}
                 variant="bordered"
                 radius="lg"
                 size="md"
                 className="w-full"
-                classNames={{
-                  selectorIcon: "hidden",
-                  value: "text-[15px]",
-                }}
-                endContent={
-                  <Icon
-                    icon="mdi:chevron-right"
-                    width={20}
-                    className="text-default-400"
-                  />
-                }
+                classNames={{ selectorIcon: "hidden", value: "text-[15px]" }}
+                endContent={<Icon icon="mdi:chevron-right" width={20} className="text-default-400" />}
               >
                 {countryList.map((c) => (
                   <SelectItem key={c} value={c}>
@@ -166,12 +186,10 @@ export default function Deposito() {
               </Select>
             </div>
 
-            {/* Banco (solo si hay país seleccionado) */}
+            {/* Banco */}
             {country && (
               <div className="space-y-2">
-                <label className="text-sm font-semibold tracking-wide">
-                  SELECCIONA TU BANCO
-                </label>
+                <label className="text-sm font-semibold tracking-wide">SELECCIONA TU BANCO</label>
                 <Select
                   aria-label="Selecciona tu banco"
                   placeholder="Bancos disponibles"
@@ -181,17 +199,8 @@ export default function Deposito() {
                   radius="lg"
                   size="md"
                   className="w-full"
-                  classNames={{
-                    selectorIcon: "hidden",
-                    value: "text-[15px]",
-                  }}
-                  endContent={
-                    <Icon
-                      icon="mdi:chevron-right"
-                      width={20}
-                      className="text-default-400"
-                    />
-                  }
+                  classNames={{ selectorIcon: "hidden", value: "text-[15px]" }}
+                  endContent={<Icon icon="mdi:chevron-right" width={20} className="text-default-400" />}
                 >
                   {bankOptions.map((b) => (
                     <SelectItem key={b} value={b}>
@@ -204,9 +213,7 @@ export default function Deposito() {
 
             {/* Monto solicitado */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold tracking-wide">
-                MONTO SOLICITADO
-              </label>
+              <label className="text-sm font-semibold tracking-wide">MONTO SOLICITADO</label>
               <Input
                 aria-label="Monto solicitado"
                 type="number"

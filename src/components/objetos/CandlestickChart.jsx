@@ -1,8 +1,27 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "react-apexcharts";
 import { CircularProgress } from "@heroui/progress";
 import { addToast } from "@heroui/react";
 
+/**
+ * Gráfico OHLC con “brush” y línea de precio en tiempo real.
+ *
+ * Props:
+ * - data: Array<{ t, o, h, l, c, v? }>
+ * - loading: boolean
+ * - title: string
+ * - height: number
+ * - showToolbar: boolean
+ * - colors: { upward, downward }
+ * - theme: "dark" | "light"
+ * - chartType: "candlestick" | "line"
+ * - enableBrush: boolean
+ * - maxPoints: number
+ * - initialRange: number
+ * - showBrushOnlyOnMobile: boolean
+ * - livePrice: number | null
+ * - livePriceSymbol: string
+ */
 export default function CandlestickChart({
   data = [],
   loading = false,
@@ -15,31 +34,115 @@ export default function CandlestickChart({
   },
   theme = "dark",
   chartType = "candlestick",
-  enableBrush = true,         // mini-gráfico inferior para recortar ventana
-  maxPoints = 600,            // puntos máximos a renderizar
-  initialRange = 200,         // cantidad inicial de velas visibles
+  enableBrush = true,
+  maxPoints = 600,
+  initialRange = 200,
+  showBrushOnlyOnMobile = true,
+  livePrice = null,
+  livePriceSymbol = "",
 }) {
-  // Recorta el dataset
+  const chartId = "candles";
+  const chartRef = useRef(null);
+
+  // Detectar móvil (<= 768px)
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener?.("change", update);
+    return () => mql.removeEventListener?.("change", update);
+  }, []);
+
+  // Controlar si se muestra el brush realmente
+  const brushEnabledFinal =
+    chartType === "candlestick" &&
+    enableBrush &&
+    (!showBrushOnlyOnMobile || isMobile);
+
+  // Recortar dataset si excede maxPoints
   const sliced = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return data.length > maxPoints ? data.slice(-maxPoints) : data;
   }, [data, maxPoints]);
+
+  const numberFmt = useMemo(
+    () =>
+      new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    []
+  );
 
   // Serie principal
   const series = useMemo(() => {
     if (chartType === "candlestick") {
       return [
         {
-          data: sliced.map((d) => ({ x: d.t, y: [d.o, d.h, d.l, d.c] })),
+          name: "OHLC",
+          data: sliced.map((d) => ({
+            x: d.t, // timestamp (ms) o Date
+            y: [d.o, d.h, d.l, d.c],
+          })),
         },
       ];
     }
     return [
       {
-        data: sliced.map((d) => ({ x: d.t, y: d.c })),
+        name: "Close",
+        data: sliced.map((d) => ({
+          x: d.t,
+          y: d.c,
+        })),
       },
     ];
   }, [sliced, chartType]);
+
+  // Extremos base del eje Y a partir de los datos visibles
+  const { baseMin, baseMax } = useMemo(() => {
+    if (!sliced.length) return { baseMin: 0, baseMax: 1 };
+    if (chartType === "candlestick") {
+      let min = Number.POSITIVE_INFINITY;
+      let max = Number.NEGATIVE_INFINITY;
+      for (const d of sliced) {
+        if (typeof d.l === "number" && d.l < min) min = d.l;
+        if (typeof d.h === "number" && d.h > max) max = d.h;
+      }
+      if (!Number.isFinite(min) || !Number.isFinite(max)) return { baseMin: 0, baseMax: 1 };
+      if (min === max) max = min + 1; // evitar rango cero
+      return { baseMin: min, baseMax: max };
+    } else {
+      let min = Number.POSITIVE_INFINITY;
+      let max = Number.NEGATIVE_INFINITY;
+      for (const d of sliced) {
+        const y = Number(d.c);
+        if (Number.isFinite(y)) {
+          if (y < min) min = y;
+          if (y > max) max = y;
+        }
+      }
+      if (!Number.isFinite(min) || !Number.isFinite(max)) return { baseMin: 0, baseMax: 1 };
+      if (min === max) max = min + 1;
+      return { baseMin: min, baseMax: max };
+    }
+  }, [sliced, chartType]);
+
+  // Calcular dominio del eje Y incluyendo siempre livePrice con padding
+  const { yMin, yMax } = useMemo(() => {
+    let min = baseMin;
+    let max = baseMax;
+    if (typeof livePrice === "number" && Number.isFinite(livePrice)) {
+      if (livePrice < min) min = livePrice;
+      if (livePrice > max) max = livePrice;
+    }
+    // padding del 3% del rango (o pequeño mínimo)
+    let span = max - min;
+    if (!Number.isFinite(span) || span <= 0) span = Math.max(1, max * 0.01);
+    const pad = Math.max(span * 0.03, Math.max(0.5, max * 0.001));
+    return { yMin: min - pad, yMax: max + pad };
+  }, [baseMin, baseMax, livePrice]);
 
   // Rango inicial para el brush
   const { initMin, initMax } = useMemo(() => {
@@ -49,10 +152,10 @@ export default function CandlestickChart({
     return { initMin: sliced[minIndex].t, initMax: sliced[last - 1].t };
   }, [sliced, initialRange]);
 
-  // Animaciones: desactivar solo si es candlestick
+  // Animaciones mínimas (evitar lag en velas)
   const animations = useMemo(
     () => ({
-      enabled: chartType !== "candlestick", // sin animación para velas
+      enabled: chartType !== "candlestick",
       speed: 300,
       animateGradually: { enabled: false },
       dynamicAnimation: { enabled: chartType !== "candlestick", speed: 250 },
@@ -60,18 +163,45 @@ export default function CandlestickChart({
     [chartType]
   );
 
+  // Evitar spam de toast “sin datos”
+  const toastShownRef = useRef(false);
+
+  // Anotación de precio en vivo
+  const liveAnnotations = useMemo(() => {
+    if (livePrice == null) return { yaxis: [] };
+    return {
+      yaxis: [
+        {
+          y: livePrice,
+          borderColor: "#1E90FF",
+          strokeDashArray: 0,
+          label: {
+            show: true,
+            text: `${livePriceSymbol || "Live"} ${numberFmt.format(livePrice)}`,
+            style: {
+              background: "#1E90FF",
+              color: "#fff",
+              fontSize: "11px",
+              fontWeight: 600,
+            },
+          },
+        },
+      ],
+    };
+  }, [livePrice, livePriceSymbol, numberFmt]);
+
   // Opciones del gráfico principal
   const options = useMemo(
     () => ({
       chart: {
-        id: "candles",
+        id: chartId,
         type: chartType,
         height,
         toolbar: { show: showToolbar },
         animations,
         zoom: { enabled: chartType === "candlestick", type: "x" },
-        redrawOnParentResize: false,
-        redrawOnWindowResize: false,
+        redrawOnParentResize: true,
+        redrawOnWindowResize: true,
       },
       title: {
         text: title,
@@ -92,9 +222,15 @@ export default function CandlestickChart({
         tooltip: { enabled: false },
       },
       yaxis: {
+        min: yMin,
+        max: yMax,
+        tickAmount: 6,
+        forceNiceScale: true,
+        decimalsInFloat: 2,
         tooltip: { enabled: true },
         labels: {
           style: { colors: "#3386ac" },
+          formatter: (val) => numberFmt.format(val),
         },
       },
       tooltip: {
@@ -106,8 +242,26 @@ export default function CandlestickChart({
         onDatasetHover: { highlightDataSeries: false },
         shared: false,
         intersect: true,
+        custom:
+          chartType === "candlestick"
+            ? ({ seriesIndex, dataPointIndex, w }) => {
+                try {
+                  const open = w.globals.seriesCandleO[seriesIndex][dataPointIndex];
+                  const high = w.globals.seriesCandleH[seriesIndex][dataPointIndex];
+                  const low = w.globals.seriesCandleL[seriesIndex][dataPointIndex];
+                  const close = w.globals.seriesCandleC[seriesIndex][dataPointIndex];
+                  return `<div style="padding:6px;font-size:12px">
+                    <div><b>Open:</b> ${numberFmt.format(open)}</div>
+                    <div><b>High:</b> ${numberFmt.format(high)}</div>
+                    <div><b>Low:</b> ${numberFmt.format(low)}</div>
+                    <div><b>Close:</b> ${numberFmt.format(close)}</div>
+                  </div>`;
+                } catch {
+                  return "";
+                }
+              }
+            : undefined,
       },
-      
       dataLabels: { enabled: false },
       grid: { strokeDashArray: 3 },
       stroke:
@@ -127,15 +281,29 @@ export default function CandlestickChart({
               },
             }
           : {},
+      annotations: liveAnnotations,
     }),
-    [chartType, height, showToolbar, animations, title, theme, colors]
+    [
+      chartType,
+      height,
+      showToolbar,
+      animations,
+      title,
+      theme,
+      colors,
+      liveAnnotations,
+      numberFmt,
+      yMin,
+      yMax,
+    ]
   );
 
-  // Opciones del brush
+  // Serie y opciones del brush
   const brushSeries = useMemo(
     () => [
       {
-        data: sliced.map((d) => ({ x: d.t, y: d.c })), // solo cierre para optimizar
+        name: "Range",
+        data: sliced.map((d) => ({ x: d.t, y: d.c })), // cierre para optimizar
       },
     ],
     [sliced]
@@ -147,7 +315,7 @@ export default function CandlestickChart({
         id: "candles-range",
         type: "bar",
         animations,
-        brush: { enabled: true, target: "candles" },
+        brush: { enabled: true, target: chartId },
         selection: {
           enabled: true,
           xaxis: { min: initMin, max: initMax },
@@ -167,6 +335,16 @@ export default function CandlestickChart({
     [animations, initMin, initMax]
   );
 
+  // Mantener y-axis y anotación sincronizados sin re-render completo
+  useEffect(() => {
+    try {
+      window.ApexCharts?.exec(chartId, "updateOptions", {
+        yaxis: { min: yMin, max: yMax },
+        annotations: liveAnnotations,
+      }, false, true);
+    } catch {}
+  }, [yMin, yMax, liveAnnotations]);
+
   // Loading
   if (loading) {
     return (
@@ -178,13 +356,15 @@ export default function CandlestickChart({
 
   // Sin datos
   if (!sliced || sliced.length === 0) {
-    addToast?.({
-      title: "Sin datos",
-      description:
-        "No hay datos disponibles para este mercado en el rango seleccionado.",
-      color: "Warning",
-      duration: 3500,
-    });
+    if (!toastShownRef.current) {
+      addToast?.({
+        title: "Sin datos",
+        description: "No hay datos disponibles para este mercado en el rango seleccionado.",
+        color: "Warning",
+        duration: 3000,
+      });
+      toastShownRef.current = true;
+    }
     return (
       <div className="w-full h-full flex items-center justify-center text-foreground/60">
         <p>No hay datos disponibles para este mercado en el rango seleccionado.</p>
@@ -194,8 +374,10 @@ export default function CandlestickChart({
 
   return (
     <div style={{ width: "100%", height: "100%" }}>
+      {/* Gráfico principal */}
       <div style={{ height }}>
         <Chart
+          ref={chartRef}
           options={options}
           series={series}
           type={chartType}
@@ -204,15 +386,10 @@ export default function CandlestickChart({
         />
       </div>
 
-      {chartType === "candlestick" && enableBrush && (
+      {/* Brush SOLO si está habilitado y (móvil || desactivado el modo “solo móvil”) */}
+      {brushEnabledFinal && (
         <div style={{ marginTop: 8, height: 130 }}>
-          <Chart
-            options={brushOptions}
-            series={brushSeries}
-            type="bar"
-            height="100%"
-            width="100%"
-          />
+          <Chart options={brushOptions} series={brushSeries} type="bar" height="100%" width="100%" />
         </div>
       )}
     </div>

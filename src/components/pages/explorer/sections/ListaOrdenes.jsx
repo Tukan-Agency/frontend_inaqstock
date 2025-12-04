@@ -31,9 +31,11 @@ import { useSession } from "../../../../hooks/use-session";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { s } from "framer-motion/client";
+import { useAccountMode } from "../../../../context/AccountModeContext"; // ✅ IMPORTAR CONTEXTO
 
 export default function ListaOrdenes() {
   const { session } = useSession();
+  const { mode } = useAccountMode(); // ✅ OBTENER MODO (real/demo)
 
   // Id del cliente desde la sesión
   const clientId = useMemo(
@@ -119,7 +121,7 @@ export default function ListaOrdenes() {
       try {
         const minDelay = new Promise((r) => setTimeout(r, BASE_DELAY_MS));
         const [ordenes] = await Promise.all([
-          listUserOrders({ clientId }),
+          listUserOrders({ clientId, mode }), // ✅ PASAR MODO AL SERVICIO
           minDelay,
         ]);
 
@@ -152,7 +154,7 @@ export default function ListaOrdenes() {
     return () => {
       cancelled = true;
     };
-  }, [clientId]);
+  }, [clientId, mode]); // ✅ AGREGAR mode A DEPENDENCIAS
 
   // Semanas del mes (para gráfico)
   const getWeeklyDataForMonth = (year, month) => {

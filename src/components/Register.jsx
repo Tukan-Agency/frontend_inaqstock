@@ -1,5 +1,4 @@
-// Register.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { Button, Input, Link, addToast } from "@heroui/react";
 import { useNavigate, Link as NavLink } from "react-router-dom";
@@ -28,13 +27,33 @@ export default function Register() {
       packageName: "Free Plan",
     },
     role: 2,
-    sequenceId: Date.now(),
+    sequenceId: null, // Inicializamos como null hasta obtener el valor del backend
   });
 
   const [error, setError] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [whatsappDifferent, setWhatsappDifferent] = useState(false);
   const [selectedCountryCode, setSelectedCountryCode] = useState("");
+
+  // Obtener el próximo sequenceId desde el backend
+  useEffect(() => {
+    const fetchSequenceId = async () => {
+      try {
+        const res = await axios.get(import.meta.env.VITE_API_URL + "/api/auth/get-sequence-ids");
+        setFormData((prev) => ({ ...prev, sequenceId: res.data.sequenceId }));
+      } catch (e) {
+        console.error("Error al obtener el sequenceId:", e);
+        addToast({
+          title: "Error",
+          description: "No se pudo obtener el sequenceId. Intenta nuevamente.",
+          color: "danger",
+          duration: 3000,
+        });
+      }
+    };
+
+    fetchSequenceId();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,27 +102,26 @@ export default function Register() {
       }
     } catch (e) {
       setError({ email: e.response?.data?.message || "Error desconocido." });
-      console.log(e);
+      console.error(e);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div style={{ background: "rgb(0 0 0 / 7%)" }}  className="text-foreground bg-background h-[110vh]">
+    <div style={{ background: "rgb(0 0 0 / 7%)" }} className="text-foreground bg-background h-[110vh]">
       <div className="flex justify-center pt-32 cursor-pointer">
         <a href="/">
-       
           <Logo data={{ height: 220, width: 250 }} />
         </a>
       </div>
       <br />
-     <div className="flex justify-center items-center gap-2">
-          Ya tienes una cuenta? 
-          <Link showAnchorIcon className="text-primary">
-            <NavLink to="/">Inicia sesión</NavLink>
-          </Link>
-        </div>
+      <div className="flex justify-center items-center gap-2">
+        Ya tienes una cuenta?
+        <Link showAnchorIcon className="text-primary">
+          <NavLink to="/">Inicia sesión</NavLink>
+        </Link>
+      </div>
       <RegisterForm
         formData={formData}
         setFormData={setFormData}
