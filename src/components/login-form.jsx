@@ -29,7 +29,7 @@ export default function LoginForm({
 
   // Elegir logo según modo oscuro (por si lo usas)
   useEffect(() => {
-    const logos = darkmodevalue ? "/nasdaq_logo_dark.png" : "/nasdaq_logo_light.png";
+    const logos = darkmodevalue ? "/nasdaq_logo_dark_v2.png" : "/nasdaq_logo_light_v2.png";
     setLogo(logos);
   }, [darkmodevalue]);
 

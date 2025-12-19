@@ -13,11 +13,11 @@ export default function Logo(data) {
     if (savedLogo) return savedLogo;
     
     // Si no, usa el valor inicial según el tema
-    return darkmodevalue ? "/nasdaq_logo_dark.png" : "/nasdaq_logo_light.png";
+    return darkmodevalue ? "/nasdaq_logo_dark_v2.png" : "/nasdaq_logo_light_v2.png";
   });
 
   useEffect(() => {
-    const newLogo = darkmodevalue ? "/nasdaq_logo_dark.png" : "/nasdaq_logo_light.png";
+    const newLogo = darkmodevalue ? "/nasdaq_logo_dark_v2.png" : "/nasdaq_logo_light_v2.png";
     
     // Solo actualiza si realmente cambió el logo
     if (newLogo !== logo) {

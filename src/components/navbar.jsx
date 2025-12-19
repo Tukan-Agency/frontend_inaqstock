@@ -170,7 +170,7 @@ export default function Nav() {
         {/* Izquierda: Logo */}
         <NavbarBrand className="min-w-[120px]">
           <Link style={{ cursor: "pointer" }} to="/operar" onClick={() => setMenuOpen(false)}>
-            <Logo data={{ height: 120, width: 150 }} />
+            <Logo data={{ height: 100, width: 120 }} />
           </Link>
         </NavbarBrand>
 
