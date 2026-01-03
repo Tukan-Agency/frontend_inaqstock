@@ -32,6 +32,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { s } from "framer-motion/client";
 import { useAccountMode } from "../../../../context/AccountModeContext"; // ✅ IMPORTAR CONTEXTO
+import { useBalance } from "../../../../context/BalanceContext"; // ✅ AGREGAR IMPORT PARA useBalance
 
 export default function ListaOrdenes() {
   const { session } = useSession();
@@ -372,17 +373,10 @@ export default function ListaOrdenes() {
     };
   }, [tableRows]);
 
-  // Balance actual (según tu fórmula getCurrentBalance)
-  const currentBalance = useMemo(() => {
-    let balance = 0;
-    ordersLike.forEach((order) => {
-      if (order.isCapital) {
-        balance += sumActionsCapital(order.operationActions);
-      }
-      balance += Number(order.operationValue || 0);
-    });
-    return balance;
-  }, [ordersLike]);
+  // Balance actual (usando balances del contexto para consistencia con SaldosDropdown)
+  const { balances } = useBalance(); // ✅ IMPORTAR Y USAR CONTEXTO PARA BALANCES
+  const currentData = mode === "demo" ? balances?.demo || {} : balances?.real || {};
+  const currentBalance = Number(currentData.balance || 0); // ✅ USAR BALANCE DEL CONTEXTO
 
   // Métricas (para los cuadritos): promedio de ganancia y de pérdida
   const roiData = useMemo(() => {
@@ -703,7 +697,7 @@ export default function ListaOrdenes() {
                   placeholder="Semestre"
                 >
                   {SEMESTRES.map((s) => (
-                    <SelectItem key={s.key} value={s.key}>
+                    <SelectItem key={s.key} value={s.label}>
                       {s.label}
                     </SelectItem>
                   ))}
@@ -1096,7 +1090,6 @@ export default function ListaOrdenes() {
                       aria-label="Detalle de conceptos"
                       removeWrapper
                       classNames={{
-                        table: "rounded-xl",
                         th: "text-[11px] font-semibold text-default-500 uppercase tracking-wide bg-transparent",
                         td: "text-sm",
                       }}

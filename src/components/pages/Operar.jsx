@@ -3,7 +3,12 @@ import { useSession } from "../../hooks/use-session.jsx";
 import Nav from "../navbar.jsx";
 import { useNavigate } from "react-router-dom";
 import { Card, CardBody, Button, Skeleton } from "@heroui/react";
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@heroui/react";
 import CandlestickChart from "../../components/objetos/CandlestickChart.jsx";
 import MarketList from "../../components/objetos/MarketList.jsx";
 import MarketWidget from "../objetos/MarketWidget/MarketWidget.jsx";
@@ -23,7 +28,11 @@ const TIME_RANGES = [
 ];
 
 const CHART_TYPES = [
-  { key: "candlestick", label: "Velas", icon: "material-symbols:candlestick-chart-rounded" },
+  {
+    key: "candlestick",
+    label: "Velas",
+    icon: "material-symbols:candlestick-chart-rounded",
+  },
   { key: "line", label: "Línea", icon: "mdi:chart-line" },
 ];
 
@@ -36,8 +45,10 @@ export default function Operar() {
   const [selectedSymbol, setSelectedSymbol] = useState("X:BTCUSD");
   const [chartType, setChartType] = useState("candlestick");
   const [selectedRange, setSelectedRange] = useState(TIME_RANGES[4]); // H1
-  const [startDate] = useState("2025-01-01");
-  const [endDate] = useState("2025-12-31");
+  // Cambiar fechas a pasado para obtener datos reales de Polygon
+const today = new Date();
+const startDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()).toISOString().split('T')[0]; // 1 año atrás
+const endDate = today.toISOString().split('T')[0]; // Hoy
   const [showSkeletons, setShowSkeletons] = useState(true);
 
   const [isMobile, setIsMobile] = useState(false);
@@ -51,11 +62,19 @@ export default function Operar() {
   const chartHeight = isMobile ? 300 : 460;
 
   // Históricos (Polygon aggs REST) - lo tenías así
-  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/${selectedRange.range.multiplier}/${selectedRange.range.timespan}/${startDate}/${endDate}?adjusted=true&apiKey=${import.meta.env.VITE_POLYGON_API_KEY}`;
+  const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/${
+    selectedRange.range.multiplier
+  }/${
+    selectedRange.range.timespan
+  }/${startDate}/${endDate}?adjusted=true&apiKey=${
+    import.meta.env.VITE_POLYGON_API_KEY
+  }`;
   const { data, loading, error } = useCachedApi(url);
-  const ohlcData = data?.results ? [...data.results].sort((a, b) => a.t - b.t) : [];
+  const ohlcData = data?.results
+    ? [...data.results].sort((a, b) => a.t - b.t)
+    : [];
 
-  // Precio en vivo real (SSE/REST crypto)
+  // Precio en vivo real (SSE/REST crypto) - ahora unificado con backend usando Polygon
   const { price: livePrice } = useLiveCryptoPrice(selectedSymbol);
 
   // Retardo para los skeletons
@@ -106,30 +125,60 @@ export default function Operar() {
 
             <div>
               {showSkeletons ? (
-                <Skeleton className="rounded-xl w-full" style={{ height: chartHeight + 80 }} />
+                <Skeleton
+                  className="rounded-xl w-full"
+                  style={{ height: chartHeight + 80 }}
+                />
               ) : (
                 <Card className="border border-solid border-[#00689b9e] p-3">
                   <div className="flex items-center justify-between mb-2 px-2">
                     <div className="flex items-center gap-3">
-                      <span className="font-bold text-lg">{selectedSymbol}</span>
-                      {livePrice != null && (
+                      <span className="font-bold text-lg">
+                        {selectedSymbol}
+                      </span>
+                      {livePrice != null ? (
                         <span className="text-primary text-sm">
-                          Live: {livePrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Live:{" "}
+                          {livePrice.toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      ) : error ? (
+                        <span className="text-red-500 text-sm">
+                          Error live: {error}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 text-sm">
+                          Cargando live...
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Dropdown>
                         <DropdownTrigger>
-                          <Button isIconOnly variant="solid" size="sm" aria-label="Seleccionar tipo de gráfico">
-                            <Icon icon={CHART_TYPES.find((t) => t.key === chartType).icon} width={20} />
+                          <Button
+                            isIconOnly
+                            variant="solid"
+                            size="sm"
+                            aria-label="Seleccionar tipo de gráfico"
+                          >
+                            <Icon
+                              icon={
+                                CHART_TYPES.find((t) => t.key === chartType)
+                                  .icon
+                              }
+                              width={20}
+                            />
                           </Button>
                         </DropdownTrigger>
                         <DropdownMenu
                           aria-label="Tipo de gráfico"
                           selectionMode="single"
                           selectedKeys={[chartType]}
-                          onSelectionChange={(keys) => setChartType(Array.from(keys)[0])}
+                          onSelectionChange={(keys) =>
+                            setChartType(Array.from(keys)[0])
+                          }
                         >
                           {CHART_TYPES.map((type) => (
                             <DropdownItem key={type.key} textValue={type.label}>
@@ -144,8 +193,16 @@ export default function Operar() {
 
                       <Dropdown>
                         <DropdownTrigger>
-                          <Button isIconOnly variant="solid" size="sm" aria-label="Seleccionar rango de tiempo">
-                            <Icon icon="material-symbols:calendar-month" width={20} />
+                          <Button
+                            isIconOnly
+                            variant="solid"
+                            size="sm"
+                            aria-label="Seleccionar rango de tiempo"
+                          >
+                            <Icon
+                              icon="material-symbols:calendar-month"
+                              width={20}
+                            />
                           </Button>
                         </DropdownTrigger>
                         <DropdownMenu
@@ -154,14 +211,25 @@ export default function Operar() {
                           selectedKey={selectedRange.key}
                           onSelectionChange={(keySet) => {
                             const key = Array.from(keySet)[0];
-                            const range = TIME_RANGES.find((r) => r.key === key);
+                            const range = TIME_RANGES.find(
+                              (r) => r.key === key
+                            );
                             setSelectedRange(range);
                           }}
                         >
                           {TIME_RANGES.map((range) => (
-                            <DropdownItem key={range.key} textValue={range.label}>
+                            <DropdownItem
+                              key={range.key}
+                              textValue={range.label}
+                            >
                               <div className="flex items-center gap-2">
-                                <span className={range.key === selectedRange.key ? "text-primary" : ""}>
+                                <span
+                                  className={
+                                    range.key === selectedRange.key
+                                      ? "text-primary"
+                                      : ""
+                                  }
+                                >
                                   {range.label}
                                 </span>
                               </div>
@@ -174,7 +242,10 @@ export default function Operar() {
 
                   <CardBody className="w-full p-0 overflow-hidden">
                     {error ? (
-                      <div className="w-full flex items-center justify-center text-red-500" style={{ height: chartHeight }}>
+                      <div
+                        className="w-full flex items-center justify-center text-red-500"
+                        style={{ height: chartHeight }}
+                      >
                         <p>{error}</p>
                       </div>
                     ) : (

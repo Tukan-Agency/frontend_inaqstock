@@ -1,81 +1,51 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * Precio en vivo de CRYPTO usando el backend:
- * - SSE /api/prices/crypto/stream?symbol=X:BTCUSD (cada 1s)
- * - fallback polling /api/prices/crypto/last si SSE falla
+ * Precio en vivo unificado para CRYPTO y STOCKS usando el backend con Polygon.
+ * - Polling /api/prices/last cada 2s para simplicidad
  */
 export function useLiveCryptoPrice(symbol) {
   const [price, setPrice] = useState(null);
   const [ts, setTs] = useState(null);
-  const [status, setStatus] = useState("idle"); // idle|sse|poll|error
-  const esRef = useRef(null);
+  const [status, setStatus] = useState("idle"); // idle|loading|error
+  const [error, setError] = useState(null);
   const pollRef = useRef(null);
 
   useEffect(() => {
     if (!symbol) return;
-    cleanup();
 
-    const base = import.meta.env.VITE_API_URL;
-    if (!base) {
-      setStatus("error");
-      return;
-    }
+    setStatus("loading");
+    setError(null);
 
-    // 1) SSE
-    try {
-      setStatus("sse");
-      esRef.current = new EventSource(`${base}/api/prices/crypto/stream?symbol=${encodeURIComponent(symbol)}`);
-    } catch {
-      fallbackPoll();
-      return;
-    }
-
-    esRef.current.onmessage = (ev) => {
+    const fn = async () => {
       try {
-        const msg = JSON.parse(ev.data);
-        if (msg.type === "price" && Number.isFinite(msg.price)) {
-          setPrice(Number(msg.price));
-          setTs(Number(msg.ts) || Date.now());
+        const base = import.meta.env.VITE_API_URL;
+        const r = await fetch(`${base}/api/prices/last?symbol=${encodeURIComponent(symbol)}`, { credentials: "include" });
+        const j = await r.json();
+        console.log("Precio response:", j); // Logging para depurar
+        if (j.ok && j.data) {
+          setPrice(Number(j.data.price));
+          setTs(Number(j.data.ts) || Date.now());
+          setStatus("idle");
+          setError(null);
+        } else {
+          setError(j.message || "Error en respuesta");
+          setStatus("error");
         }
-      } catch {}
-    };
-    esRef.current.onerror = () => {
-      fallbackPoll();
-    };
-
-    function fallbackPoll() {
-      setStatus("poll");
-      const fn = async () => {
-        try {
-          const r = await fetch(`${base}/api/prices/crypto/last?symbol=${encodeURIComponent(symbol)}`, { credentials: "include" });
-          const j = await r.json();
-          const p = Number(j?.data?.price);
-          const t = Number(j?.data?.ts) || Date.now();
-          if (Number.isFinite(p)) {
-            setPrice(p);
-            setTs(t);
-          }
-        } catch {}
-      };
-      fn();
-      pollRef.current = setInterval(fn, 2000);
-    }
-
-    function cleanup() {
-      if (esRef.current) {
-        try { esRef.current.close(); } catch {}
-        esRef.current = null;
+      } catch (err) {
+        console.error("Error fetching price:", err); // Logging
+        setError(err.message);
+        setStatus("error");
       }
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
-      setStatus("idle");
-    }
+    };
 
-    return cleanup;
+    fn(); // Llamada inicial
+    pollRef.current = setInterval(fn, 2000); // Polling cada 2s
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, [symbol]);
 
-  return { price, ts, status };
+  return { price, ts, status, error };
 }
