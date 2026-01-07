@@ -45,10 +45,12 @@ export default function Operar() {
   const [selectedSymbol, setSelectedSymbol] = useState("X:BTCUSD");
   const [chartType, setChartType] = useState("candlestick");
   const [selectedRange, setSelectedRange] = useState(TIME_RANGES[4]); // H1
-  // Cambiar fechas a pasado para obtener datos reales de Polygon
-const today = new Date();
-const startDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()).toISOString().split('T')[0]; // 1 año atrás
-const endDate = today.toISOString().split('T')[0]; // Hoy
+  
+  // Cambiar fechas a pasado para obtener datos reales de Polygon si es necesario
+  const today = new Date();
+  const startDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()).toISOString().split('T')[0]; // 1 año atrás
+  const endDate = today.toISOString().split('T')[0]; // Hoy
+  
   const [showSkeletons, setShowSkeletons] = useState(true);
 
   const [isMobile, setIsMobile] = useState(false);
@@ -61,7 +63,7 @@ const endDate = today.toISOString().split('T')[0]; // Hoy
   }, []);
   const chartHeight = isMobile ? 300 : 460;
 
-  // Históricos (Polygon aggs REST) - lo tenías así
+  // Históricos (Polygon aggs REST)
   const url = `https://api.polygon.io/v2/aggs/ticker/${selectedSymbol}/range/${
     selectedRange.range.multiplier
   }/${
@@ -69,15 +71,16 @@ const endDate = today.toISOString().split('T')[0]; // Hoy
   }/${startDate}/${endDate}?adjusted=true&apiKey=${
     import.meta.env.VITE_POLYGON_API_KEY
   }`;
+  
   const { data, loading, error } = useCachedApi(url);
   const ohlcData = data?.results
     ? [...data.results].sort((a, b) => a.t - b.t)
     : [];
 
-  // Precio en vivo real (SSE/REST crypto) - ahora unificado con backend usando Polygon
+  // Precio en vivo real (SSE/REST crypto)
   const { price: livePrice } = useLiveCryptoPrice(selectedSymbol);
 
-  // Retardo para los skeletons
+  // Retardo para los skeletons (Solo afectará a la gráfica y widgets laterales, NO a la lista)
   useEffect(() => {
     if (!loading) {
       const timer = setTimeout(() => {
@@ -115,14 +118,17 @@ const endDate = today.toISOString().split('T')[0]; // Hoy
 
         <div className="pt-5 flex flex-col gap-6">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_3fr] gap-4">
+            {/* 
+               SOLUCIÓN APLICADA:
+               MarketList renderizado directamente. 
+               Ya no depende de 'showSkeletons', por lo que no se desmonta al cambiar de moneda.
+               Mantendrá su estado (panel abierto) y solo mostrará loading interno la primera vez.
+            */}
             <div>
-              {showSkeletons ? (
-                <Skeleton className="rounded-xl w-full h-96" />
-              ) : (
-                <MarketList onSelect={handleMarketSelect} />
-              )}
+              <MarketList onSelect={handleMarketSelect} />
             </div>
 
+            {/* Columna derecha: Gráfica. Esta SÍ muestra skeletons al cargar nueva data */}
             <div>
               {showSkeletons ? (
                 <Skeleton

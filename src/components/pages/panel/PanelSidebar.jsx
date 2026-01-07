@@ -11,9 +11,10 @@ const items = [
     label: "Verificaciones",
     icon: "bitcoin-icons:verify-filled",
   },
+  // ✅ Nuevo Item agregado al final
+  { to: "ajustes", label: "Ajustes", icon: "solar:settings-bold-duotone" },
 ];
 
-// Botón del sidebar que navega con useNavigate y calcula "activo" sin NavLink
 function SidebarNavItem({
   to,
   label,
@@ -23,12 +24,9 @@ function SidebarNavItem({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const resolved = useResolvedPath(to); // ej: "usuarios" => "/panel/usuarios"
+  const resolved = useResolvedPath(to);
 
-  // Considera activo cuando:
-  // - end=true: coincide exactamente, o si es "dashboard" y estamos en el index de /panel
-  // - end=false: el path actual empieza con el path resuelto
-  const basePath = resolved.pathname.replace(/\/[^/]+$/, ""); // padre, ej: "/panel"
+  const basePath = resolved.pathname.replace(/\/[^/]+$/, ""); 
   const isIndex =
     location.pathname === basePath || location.pathname === `${basePath}/`;
   const isActive = end

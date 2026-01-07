@@ -11,6 +11,7 @@ import { HeroUIProvider } from "@heroui/react";
 import { ToastProvider } from "@heroui/toast";
 import ErrorBoundary from "./components/error-boundary";
 import Error from "./components/error";
+import { SettingsProvider } from "./context/SettingsContext.jsx";
 
 window.global = window;
 
@@ -41,7 +42,9 @@ const RootComponent = () => {
                       darkMode.value ? "dark" : ""
                     } text-foreground bg-background `}
                   >
-                    <App />
+                    <SettingsProvider>
+                      <App />
+                    </SettingsProvider>
                   </main>
                 </ErrorBoundary>
               </BalanceProvider>{" "}

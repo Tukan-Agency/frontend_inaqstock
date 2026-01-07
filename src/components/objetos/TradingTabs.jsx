@@ -1,42 +1,67 @@
-import { Tab, Tabs } from "@heroui/react";
-import { useEffect, useMemo, useState } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Tabs, Tab } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import OpenPositionsTable from "./OpenPositionsTable";
-import ClosedPositionsTable from "./ClosedPositionsTable";
-import { TradingService } from "../../components/services/tradingService";
-import { useCryptoPrices } from "../../hooks/useCryptoPrices";
-import { polygonService } from "../services/polygonService"; // Fallback REST
+import { TradingService } from "../services/tradingService.js";
+import OpenPositionsTable from "./OpenPositionsTable.jsx";
+import ClosedPositionsTable from "./ClosedPositionsTable.jsx";
+import { useAccountMode } from "../../context/AccountModeContext";
+import { useCryptoPrices } from "../../hooks/useCryptoPrices.js";
 
 export default function TradingTabs() {
+  const { mode } = useAccountMode();
   const [selectedTab, setSelectedTab] = useState("open");
+
   const [openPositions, setOpenPositions] = useState([]);
   const [closedPositions, setClosedPositions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 1. CARGAR POSICIONES
+  const loadPositions = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [openData, closedData] = await Promise.all([
+        TradingService.getOpenPositions(mode),
+        TradingService.getClosedPositions(mode),
+      ]);
+      setOpenPositions(Array.isArray(openData) ? openData : []);
+      setClosedPositions(Array.isArray(closedData) ? closedData : []);
+    } catch (error) {
+      console.error("Error cargando posiciones:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [mode]);
+
   useEffect(() => {
     loadPositions();
-  }, []);
+  }, [loadPositions]);
 
+  // 2. ACTUALIZACIÓN EN TIEMPO REAL
   useEffect(() => {
     const handleTrade = (event) => {
-      const savedPosition = event.detail;
-      // Al crear, marcamos como pendiente para que muestre Skeleton
-      setOpenPositions((prev) => [
-        ...prev,
-        {
-          ...savedPosition,
-          profit: null,
-          profitPercentage: null,
-          pnlReady: false,
-          profitLoading: true,
-        },
-      ]);
+      const newPosition = event.detail;
+      if (newPosition && newPosition.mode === mode) {
+        setOpenPositions((prev) => [
+          {
+            ...newPosition,
+            profit: 0,
+            profitPercentage: 0,
+            pnlReady: false,
+            profitLoading: true,
+            // Aseguramos que openTime exista para la tabla
+            openTime: newPosition.createdAt || new Date().toISOString(),
+          },
+          ...prev,
+        ]);
+        setSelectedTab("open");
+      }
     };
+
     window.addEventListener("trade-executed", handleTrade);
     return () => window.removeEventListener("trade-executed", handleTrade);
-  }, []);
+  }, [mode]);
 
-  // Solo cripto (X:)
+  // 3. LÓGICA DE PRECIOS
   const cryptoSymbols = useMemo(
     () =>
       Array.from(
@@ -48,47 +73,39 @@ export default function TradingTabs() {
       ),
     [openPositions]
   );
+
   const cryptoPrices = useCryptoPrices(cryptoSymbols);
 
-  const recalc = (positions, priceMap = {}) =>
+  const recalc = (positions) =>
     positions.map((p) => {
       const sym = String(p.symbol).trim();
       const isCrypto = sym.startsWith("X:");
-
-      // Precio vivo proveniente de WS (cripto) o del mapa (fallback REST)
-      const mapPrice = priceMap[sym];
       const wsPrice = isCrypto ? cryptoPrices[sym] : undefined;
-      const livePrice =
-        typeof mapPrice === "number" && !Number.isNaN(mapPrice)
-          ? mapPrice
-          : typeof wsPrice === "number" && !Number.isNaN(wsPrice)
+
+      const currentPriceNum =
+        typeof wsPrice === "number" && !Number.isNaN(wsPrice)
           ? wsPrice
-          : undefined;
+          : Number(p.currentPrice) || Number(p.openPrice) || 0;
 
-      const hasLive = typeof livePrice === "number" && livePrice > 0;
-
-      const currentPriceNum = hasLive
-        ? Number(livePrice)
-        : Number(p.currentPrice) || Number(p.openPrice) || 0;
-
+      const hasLive = typeof wsPrice === "number" && wsPrice > 0;
       const open = Number(p.openPrice);
       const qty = Number(p.volume) || 0;
       const commission = Number(p.commission) || 0;
       const swap = Number(p.swap) || 0;
 
-      // Mantén valores previos si aún no hay precio vivo
-      let profit =
-        hasLive && open && qty
-          ? ((p.type === "Compra" ? currentPriceNum - open : open - currentPriceNum) * qty - commission - swap).toFixed(2)
-          : p.profit ?? "0.00";
+      let profit = p.profit;
+      let profitPercentage = p.profitPercentage;
 
-      let profitPercentage =
-        hasLive && open
-          ? (((p.type === "Compra" ? currentPriceNum - open : open - currentPriceNum) / open) * 100).toFixed(2)
-          : p.profitPercentage ?? "0.00";
+      if (hasLive && open && qty) {
+        const diff =
+          p.type === "Compra"
+            ? currentPriceNum - open
+            : open - currentPriceNum;
+        profit = (diff * qty - commission - swap).toFixed(2);
+        profitPercentage = ((diff / open) * 100).toFixed(2);
+      }
 
       const pnlReady = p.pnlReady || hasLive;
-      const profitLoading = !pnlReady;
 
       return {
         ...p,
@@ -96,101 +113,84 @@ export default function TradingTabs() {
         profit,
         profitPercentage,
         pnlReady,
-        profitLoading,
+        profitLoading: !pnlReady,
       };
     });
 
-  // Recalcular cuando entran ticks WS (cripto)
   useEffect(() => {
     if (!openPositions.length) return;
     setOpenPositions((prev) => recalc(prev));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cryptoPrices, openPositions.length]);
+  }, [cryptoPrices]);
 
-  // Fallback: si no hay ticks, actualizar por REST cada 12s (y 1º intento a los 2s)
-  useEffect(() => {
-    if (!openPositions.length) return;
-    let cancel = false;
-
-    const tick = async () => {
-      try {
-        const symbols = Array.from(new Set(openPositions.map((p) => p.symbol)));
-        const entries = await Promise.all(
-          symbols.map(async (sym) => {
-            try {
-              const price = await polygonService.getRealtimePrice(sym);
-              return [sym, price];
-            } catch {
-              return [sym, undefined];
-            }
-          })
-        );
-        if (cancel) return;
-        const map = Object.fromEntries(entries);
-        setOpenPositions((prev) => recalc(prev, map));
-      } catch {
-        // silencioso
-      }
-    };
-
-    const first = setTimeout(tick, 2000);
-    const id = setInterval(tick, 12000);
-
-    return () => {
-      cancel = true;
-      clearTimeout(first);
-      clearInterval(id);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openPositions.length]);
-
-  const loadPositions = async () => {
-    setIsLoading(true);
-    try {
-      const [open, closed] = await Promise.all([
-        TradingService.getOpenPositions(),
-        TradingService.getClosedPositions(),
-      ]);
-
-      // Marcar todas las abiertas como “pendiente” para que muestren Skeleton hasta el primer precio
-      const openWithFlags = (open || []).map((p) => ({
-        ...p,
-        profit: p.profit ?? null,
-        profitPercentage: p.profitPercentage ?? null,
-        pnlReady: false,
-        profitLoading: true,
-      }));
-
-      setOpenPositions(openWithFlags);
-      setClosedPositions(closed || []);
-    } catch (error) {
-      console.error("No se pudieron cargar las posiciones:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // 4. CERRAR POSICIÓN (Optimista + Mapeo correcto)
   const handleClosePosition = async (position) => {
     try {
+      // 1. Guardar referencia de la posición a cerrar para usar sus datos
+      const positionToClose = openPositions.find((p) => p._id === position._id);
+
+      // 2. Eliminar visualmente de abiertas
+      setOpenPositions((prev) => prev.filter((p) => p._id !== position._id));
+
+      const closeTimeISO = new Date().toISOString();
+      const closePriceVal = position.currentPrice || position.openPrice; // Fallback
+
+      // 3. Datos para el backend
       const closingData = {
-        closePrice: position.currentPrice,
-        closeTime: new Date().toISOString(),
+        closePrice: closePriceVal,
+        closeTime: closeTimeISO,
       };
-      const closedPosition = await TradingService.closePosition(
+
+      // 4. Llamada al backend
+      const response = await TradingService.closePosition(
         position._id,
         closingData
       );
-      setOpenPositions((prev) => prev.filter((p) => p._id !== position._id));
-      setClosedPositions((prev) => [...prev, closedPosition]);
+
+      // 5. Construir objeto FINAL para la tabla "Cerradas"
+      // Usamos la respuesta del backend, pero si falta algo, rellenamos con lo que teníamos en local
+      const finalClosedPosition = {
+        ...positionToClose, // Datos originales (symbol, volume, type...)
+        ...response, // Datos actualizados del backend
+        // FORZAMOS los campos críticos para la tabla
+        closePrice: response.closePrice || closePriceVal,
+        closeTime: response.closeTime || response.closedAt || closeTimeISO,
+        openTime:
+          response.openTime ||
+          response.createdAt ||
+          positionToClose.openTime ||
+          positionToClose.createdAt,
+        // Aseguramos ganancia final calculada si el backend no la manda ya
+        profit:
+          response.profit !== undefined
+            ? response.profit
+            : positionToClose.profit,
+        profitPercentage:
+          response.profitPercentage !== undefined
+            ? response.profitPercentage
+            : positionToClose.profitPercentage,
+      };
+
+      // 6. Agregar a la lista de cerradas
+      setClosedPositions((prev) => [finalClosedPosition, ...prev]);
     } catch (error) {
       console.error("No se pudo cerrar la posición:", error);
+      loadPositions(); // Revertir/Recargar en caso de error
     }
   };
 
   const tabs = [
     { id: "open", label: "Posiciones abiertas", icon: "famicons:book" },
-    { id: "pending", label: "Órdenes pendientes", icon: "lets-icons:order-fill" },
-    { id: "closed", label: "Posiciones cerradas", icon: "zondicons:close-solid" },
+    {
+      id: "pending",
+      label: "Órdenes pendientes",
+      icon: "lets-icons:order-fill",
+    },
+    {
+      id: "closed",
+      label: "Posiciones cerradas",
+      icon: "zondicons:close-solid",
+    },
     { id: "finances", label: "Finanzas", icon: "majesticons:creditcard" },
   ];
 

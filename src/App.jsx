@@ -15,15 +15,18 @@ import ListaOrdenes from "../src/components/pages/explorer/sections/ListaOrdenes
 import Movimientos from "../src/components/pages/explorer/sections/Movimientos.jsx";
 import Deposito from "../src/components/pages/explorer/sections/Deposito.jsx";
 import Retiro from "../src/components/pages/explorer/sections/Retiro.jsx";
+import Verificar from "./components/pages/explorer/sections/Verificar.jsx";
 
-// Panel admin (nuevo)
+// Panel admin
 import PanelLayout from "../src/components/pages/panel/PaneILayout.jsx";
 import AdminDashboard from "../src/components/pages/panel/sections/Dashboard.jsx";
 import AdminUsuarios from "../src/components/pages/panel/sections/Usuarios.jsx";
 import AdminSolicitudes from "../src/components/pages/panel/sections/Solicitudes.jsx";
 import PanelUserOrders from "../src/components/pages/panel/sections/PanelUserOrders.jsx";
-import Verificar from "./components/pages/explorer/sections/Verificar.jsx";
 import SolicitudesVerify from "./components/pages/panel/sections/SolicitudesVerify.jsx";
+import ForgotPassword from "./components/pages/ForgotPassword.jsx";
+import ResetPassword from "./components/pages/ResetPassword.jsx";
+import Settings from "./components/pages/Settings.jsx"; // ✅ Importación de Ajustes
 
 function App() {
   return (
@@ -54,7 +57,10 @@ function App() {
           <Route path="usuarios" element={<AdminUsuarios />} />
           <Route path="solicitudes" element={<AdminSolicitudes />} />
           <Route path="solicitudes-verify" element={<SolicitudesVerify />} />
-          {/* Alias por si alguien escribe mal "dasboard" */}
+
+          {/* ✅ Nueva Ruta Ajustes */}
+          <Route path="ajustes" element={<Settings />} />
+
           <Route
             path="dasboard"
             element={<Navigate to="dashboard" replace />}
@@ -67,6 +73,8 @@ function App() {
         <Route path={"/register"} element={<Register />} />
         <Route path={"/verify"} element={<Verify />} />
         <Route path={"*"} element={<NotFound />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </>
   );

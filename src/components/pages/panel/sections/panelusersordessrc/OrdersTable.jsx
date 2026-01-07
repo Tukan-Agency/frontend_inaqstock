@@ -12,6 +12,14 @@ export default function OrdersTable({
   onFinalize,
   onCancel,
 }) {
+  
+  // Función auxiliar para sumar acciones de capital si existen
+  const sumActionsCapital = (ops = []) =>
+    (ops || []).reduce(
+      (acc, a) => acc + Number(a?.benefit || 0) * Number(a?.quantity || 0),
+      0
+    );
+
   return (
     <div className="mt-2">
       <Table
@@ -25,7 +33,7 @@ export default function OrdersTable({
         }}
       >
         <TableHeader columns={columns}>
-          {(c) => <TableColumn key={c.key}>{c.label}</TableColumn>}
+          {(c) => <TableColumn key={c.key} className={["capital","ganancia","perdida","retiros"].includes(c.key) ? "text-right" : ""}>{c.label}</TableColumn>}
         </TableHeader>
         <TableBody emptyContent="Este usuario no tiene órdenes">
           {rows.map((row) => {
@@ -33,6 +41,36 @@ export default function OrdersTable({
             const finalized = (o.status || "").toLowerCase() === "finalizado";
             const canceled = (o.status || "").toLowerCase() === "cancelado";
             const canUpdate = !finalized && !canceled;
+
+            // --- LÓGICA DE REPARACIÓN DE DATOS ---
+            const actionsTotal = sumActionsCapital(o.operationActions);
+            const val = Number(o.operationValue || 0);
+            const isCapital = o.isCapital === true;
+            // Normalizar nombre de propiedad withdrawal/withdrawl
+            const isWithdrawalRaw = o.isWithdrawl === true || o.isWithdrawal === true; 
+            const hasActions = actionsTotal !== 0;
+
+            let finalCapital = 0;
+            let finalRetiros = 0;
+            let finalGanancia = 0;
+            let finalPerdida = 0;
+
+            if (isCapital && !isWithdrawalRaw) {
+                // Depósito
+                finalCapital = hasActions ? actionsTotal : val;
+            } else if (isWithdrawalRaw && hasActions) {
+                // Retiro real (administrativo con desglose)
+                finalRetiros = actionsTotal;
+            } else {
+                // Trading (incluye pérdidas mal marcadas como retiros)
+                if (val >= 0) {
+                    finalGanancia = val;
+                } else {
+                    finalPerdida = Math.abs(val); // Valor absoluto para columna Pérdida
+                }
+            }
+            // -------------------------------------
+
             return (
               <TableRow key={row.id}>
                 <TableCell>{row.operacion}</TableCell>
@@ -48,10 +86,25 @@ export default function OrdersTable({
                     {o.status || "En progreso"}
                   </Chip>
                 </TableCell>
-                <TableCell className="text-right">{formatCurrency(row.capital)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(row.ganancia)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(row.perdida)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(row.retiros)}</TableCell>
+                
+                {/* Usamos los valores recalculados (final...) en lugar de los row... */}
+                <TableCell className="text-right">
+                  {formatCurrency(finalCapital)}
+                </TableCell>
+                
+                {/* Ganancia: Verde si > 0 */}
+                <TableCell className={`text-right ${finalGanancia > 0 ? "text-success-600 font-bold" : ""}`}>
+                  {formatCurrency(finalGanancia)}
+                </TableCell>
+                
+                {/* Pérdida: Rojo si > 0 */}
+                <TableCell className={`text-right ${finalPerdida > 0 ? "text-danger-600 font-bold" : ""}`}>
+                  {formatCurrency(finalPerdida)}
+                </TableCell>
+                
+                <TableCell className="text-right">
+                  {formatCurrency(finalRetiros)}
+                </TableCell>
 
                 <TableCell>
                   <Button isIconOnly radius="full" size="sm" variant="flat" color="success" onPress={() => onOpenDetails(o)} aria-label="Ver más">

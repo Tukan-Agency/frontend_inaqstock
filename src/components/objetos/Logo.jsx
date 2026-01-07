@@ -1,33 +1,47 @@
+import React from "react";
 import useDarkMode from "use-dark-mode";
-import { useState, useEffect } from "react";
+import { useSettings } from "../../context/SettingsContext.jsx";
 
-export default function Logo(data) {
-  const width = data.data.width;
-  const height = data.data.height;
-  const darkmodevalue = useDarkMode().value;
-  
-  // Estado inicial basado en localStorage o en el tema actual
-  const [logo, setLogo] = useState(() => {
-    // Si hay un valor guardado en localStorage, úsalo
-    const savedLogo = typeof window !== 'undefined' ? localStorage.getItem('nasdaq-logo') : null;
-    if (savedLogo) return savedLogo;
-    
-    // Si no, usa el valor inicial según el tema
-    return darkmodevalue ? "/nasdaq_logo_dark_v2.png" : "/nasdaq_logo_light_v2.png";
-  });
+// Definimos los defaults locales (los que tenías antes) por si falla la API
+const DEFAULT_LIGHT = "/nasdaq_logo_light_v2.png";
+const DEFAULT_DARK = "/nasdaq_logo_dark_v2.png";
 
-  useEffect(() => {
-    const newLogo = darkmodevalue ? "/nasdaq_logo_dark_v2.png" : "/nasdaq_logo_light_v2.png";
-    
-    // Solo actualiza si realmente cambió el logo
-    if (newLogo !== logo) {
-      setLogo(newLogo);
-      // Guarda en localStorage para futuras cargas
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('nasdaq-logo', newLogo);
-      }
-    }
-  }, [darkmodevalue, logo]);
+export default function Logo({ size = 40, width, height, className }) {
+  const { settings } = useSettings();
+  const darkMode = useDarkMode(); 
+  const isDark = darkMode.value;
 
-  return <img src={logo} width={width} height={height} alt="Logo" />;
+  // Lógica de selección de imagen:
+  // 1. Intentamos usar el logo del backend correspondiente al tema.
+  // 2. Si no hay, intentamos usar el logo del backend del otro tema (fallback).
+  // 3. Si no hay nada en el backend, usamos la imagen local de public/ (DEFAULT).
+  let imageSrc;
+
+  if (isDark) {
+    imageSrc = settings?.logoDark || settings?.logoLight || DEFAULT_DARK;
+  } else {
+    imageSrc = settings?.logoLight || settings?.logoDark || DEFAULT_LIGHT;
+  }
+
+  console.log("Logo imageSrc:", settings);
+  // Dimensiones: soportamos 'size' o 'width/height' específicos
+  const finalWidth = width || size;
+  const finalHeight = height || size;
+
+  return (
+    <img
+      src={imageSrc}
+      alt={settings?.platformTitle || "Logo"}
+      width={finalWidth}
+      height={finalHeight}
+      className={`object-contain ${className || ""}`}
+      // Si la URL del backend falla (404), hacemos fallback a la imagen local
+      onError={(e) => {
+        const fallback = isDark ? DEFAULT_DARK : DEFAULT_LIGHT;
+        // Evitar bucle infinito si el fallback también falla
+        if (e.target.src.includes(fallback)) return;
+        e.target.src = fallback;
+      }}
+    />
+  );
 }

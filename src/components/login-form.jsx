@@ -20,20 +20,17 @@ export default function LoginForm({
   const darkmodevalue = useDarkMode().value;
   const [logo, setLogo] = useState(null);
 
-  // Redirección segura con efecto
   useEffect(() => {
     if (session.status === "authenticated") {
       navigate("/operar", { replace: true });
     }
   }, [session.status, navigate]);
 
-  // Elegir logo según modo oscuro (por si lo usas)
   useEffect(() => {
     const logos = darkmodevalue ? "/nasdaq_logo_dark_v2.png" : "/nasdaq_logo_light_v2.png";
     setLogo(logos);
   }, [darkmodevalue]);
 
-  // Toast de error
   useEffect(() => {
     if (error) {
       addToast({
@@ -50,7 +47,6 @@ export default function LoginForm({
     <div className="min-h-screen w-full flex items-center justify-center bg-[rgb(0_0_0_/_7%)] px-4 py-6">
       <Card shadow="sm" className="w-full max-w-xs sm:max-w-sm md:max-w-md px-2 sm:px-4">
         <CardHeader className="px-2 sm:px-4 pt-4 pb-6 flex items-center justify-center">
-          {/* Ajuste de tamaño de logo para móvil */}
           <div className="w-[160px] sm:w-[200px]">
             <Logo data={{ height: 160, width: 200 }} />
           </div>
@@ -68,16 +64,25 @@ export default function LoginForm({
               size="md"
               radius="md"
             />
-            <Input
-              type="password"
-              name="password"
-              label="Password"
-              value={formData.password}
-              variant="bordered"
-              onChange={handleChange}
-              size="md"
-              radius="md"
-            />
+            
+            <div className="flex flex-col gap-1">
+              <Input
+                type="password"
+                name="password"
+                label="Password"
+                value={formData.password}
+                variant="bordered"
+                onChange={handleChange}
+                size="md"
+                radius="md"
+              />
+              {/* ✅ ENLACE DE RECUPERACIÓN AGREGADO AQUÍ */}
+              <div className="flex justify-end">
+                <Link as={NavLink} to="/forgot-password" size="sm" className="text-primary text-xs cursor-pointer hover:underline">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+            </div>
 
             <Button
               type="submit"

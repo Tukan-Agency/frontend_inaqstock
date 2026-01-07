@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Button, Input, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
-// ✅ RUTAS EXACTAS SOLICITADAS
 import { TradingService } from "../services/tradingService.js";
 import { useTradingPermission } from "../../hooks/useTradingPermission.js";
 
@@ -79,7 +78,7 @@ export default function MarketTradePanel({ market }) {
       return;
     }
 
-    // ✅ LÓGICA NUEVA: Si es demo y no tiene capital, abrir modal manualmente
+    // Si es demo y no tiene capital, abrir modal manualmente
     if (!canTrade && mode === "demo" && Number(capital) < Number(requiredCost)) {
        window.dispatchEvent(new Event("open-demo-funding"));
        return;
@@ -104,10 +103,19 @@ export default function MarketTradePanel({ market }) {
         volume: quantity,
         type,
         openPrice,
-        mode: mode // <--- Campo clave
+        mode: mode // Enviamos el modo al backend
       });
 
-      window.dispatchEvent(new CustomEvent("trade-executed", { detail: savedPosition }));
+      // --- CORRECCIÓN CLAVE ---
+      // Forzamos que el evento tenga el 'mode' y una fecha válida
+      // Esto asegura que la tabla (TradingTabs) reconozca la operación inmediatamente
+      const eventData = {
+        ...savedPosition,
+        mode: mode, // Aseguramos que el modo esté presente
+        createdAt: savedPosition.createdAt || new Date().toISOString() // Evita "Invalid Date"
+      };
+
+      window.dispatchEvent(new CustomEvent("trade-executed", { detail: eventData }));
 
       setTimeout(refresh, 500);
     } catch (error) {
@@ -132,8 +140,6 @@ export default function MarketTradePanel({ market }) {
 
   const usdValue = hasValidPrice ? (quantity * priceNumber).toFixed(2) : "0.00";
   
-  // Deshabilitar botones solo si es REAL y no puede operar (o cargando)
-  // Si es DEMO, dejamos habilitado para que puedan hacer clic y ver el modal
   const disabledTrade = (mode === "real" && !canTrade) || isLoading;
 
   return (
