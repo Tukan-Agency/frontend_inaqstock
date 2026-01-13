@@ -7,3 +7,14 @@
   font-family: "poppins", sans-serif;
   font-weight: 400;
 }
+
+.alertestyle {
+    background: #00dd8d2e;
+    color: #137e7f;
+    font-weight: 400;
+}
+.alertestyleerror {
+    background: #ff14472e;
+    color: #831137;
+    font-weight: 400;
+}

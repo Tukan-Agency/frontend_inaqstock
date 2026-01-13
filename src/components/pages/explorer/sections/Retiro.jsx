@@ -5,11 +5,12 @@ import { useNavigate } from "react-router-dom";
 // Reutiliza tu hook de sesión (ya usado en otras pantallas)
 import { useSession } from "../../../../hooks/use-session.jsx";
 import { requestsService } from "../../../services/requests.service.js";
+ 
 
 export default function Retiro() {
   const navigate = useNavigate();
   const { session } = useSession();
-
+ 
   // Tomar clientId y clientName desde la sesión (ajusta si tus campos difieren)
   const clientId =
     session?.user?.clientId ||

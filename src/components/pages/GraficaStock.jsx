@@ -7,9 +7,12 @@ import { Card, CardBody } from "@heroui/react";
 import MarketList from "../objetos/MarketList.jsx";
 import MarketWidget from "../objetos/MarketWidget/MarketWidget.jsx";
 import useCachedData from "../../hooks/useCachedData.js";
+ 
 
 export default function GraficaStock() {
   const { session } = useSession();
+ 
+
   const navigate = useNavigate();
   const [selectedSymbol, setSelectedSymbol] = useState("X:BTCUSD");
   const [iframeLoaded, setIframeLoaded] = useState(false);

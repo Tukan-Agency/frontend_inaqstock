@@ -22,8 +22,6 @@ export default function Logo({ size = 40, width, height, className }) {
   } else {
     imageSrc = settings?.logoLight || settings?.logoDark || DEFAULT_LIGHT;
   }
-
-  console.log("Logo imageSrc:", settings);
   // Dimensiones: soportamos 'size' o 'width/height' específicos
   const finalWidth = width || size;
   const finalHeight = height || size;

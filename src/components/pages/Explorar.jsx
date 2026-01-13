@@ -3,9 +3,11 @@ import Nav from "../navbar.jsx";
 import { useNavigate } from "react-router-dom";
 import { Card, CardBody } from "@heroui/card";
 import { useEffect } from "react";
+ 
 
 export default function Explorar() {
   const { session } = useSession();
+ 
   const navigate = useNavigate();
 
   useEffect(() => {

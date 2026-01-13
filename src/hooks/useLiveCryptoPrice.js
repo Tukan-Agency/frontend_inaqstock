@@ -22,7 +22,7 @@ export function useLiveCryptoPrice(symbol) {
         const base = import.meta.env.VITE_API_URL;
         const r = await fetch(`${base}/api/prices/last?symbol=${encodeURIComponent(symbol)}`, { credentials: "include" });
         const j = await r.json();
-        console.log("Precio response:", j); // Logging para depurar
+       
         if (j.ok && j.data) {
           setPrice(Number(j.data.price));
           setTs(Number(j.data.ts) || Date.now());

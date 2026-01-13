@@ -3,9 +3,11 @@ import { useSession } from "../../../hooks/use-session.jsx";
 import { useNavigate } from "react-router-dom";
 import Nav from "../../navbar.jsx";
 import PanelSidebar from "./PanelSidebar.jsx";
+ 
 
 export default function PanelLayout() {
   const { session } = useSession();
+ 
   const navigate = useNavigate();
 
   // Guard básico (mismo estilo que Explorar)

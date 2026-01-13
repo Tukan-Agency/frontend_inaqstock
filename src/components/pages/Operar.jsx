@@ -3,6 +3,7 @@ import { useSession } from "../../hooks/use-session.jsx";
 import Nav from "../navbar.jsx";
 import { useNavigate } from "react-router-dom";
 import { Card, CardBody, Button, Skeleton } from "@heroui/react";
+
 import {
   Dropdown,
   DropdownTrigger,
@@ -16,6 +17,8 @@ import TradingTabs from "../objetos/TradingTabs.jsx";
 import { Icon } from "@iconify/react";
 import useCachedApi from "../services/useCachedApi.js";
 import { useLiveCryptoPrice } from "../../hooks/useLiveCryptoPrice.js";
+ 
+
 
 const TIME_RANGES = [
   { key: "M30", label: "M30", range: { multiplier: 30, timespan: "minute" } },
@@ -39,6 +42,7 @@ const CHART_TYPES = [
 export default function Operar() {
   const [openPositions, setOpenPositions] = useState([]);
   const { session } = useSession();
+
   const navigate = useNavigate();
 
   // Mantén formato cripto "X:BTCUSD", "X:ETHUSD", etc.

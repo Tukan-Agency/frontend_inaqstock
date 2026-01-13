@@ -3,9 +3,11 @@ import { useSession } from "../../../hooks/use-session.jsx";
 import { useNavigate } from "react-router-dom";
 import Nav from "../../navbar.jsx";
 import ExplorarSidebar from "./ExplorarSidebar.jsx";
+ 
 
 export default function ExplorarLayout() {
   const { session } = useSession();
+ 
   const navigate = useNavigate();
 
   if (session.status === "unauthenticated") {

@@ -19,9 +19,11 @@ import Chart from "react-apexcharts";
 import MarketList from "../../components/objetos/MarketList.jsx";
 import MarketWidget from "../objetos/MarketWidget/MarketWidget.jsx";
 import { useOrdersAggregates } from "../../hooks/useOrdersAggregates.js";
+ 
 
 export default function Analitica() {
   const { session } = useSession();
+ 
   const navigate = useNavigate();
 
   useEffect(() => {

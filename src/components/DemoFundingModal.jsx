@@ -6,17 +6,21 @@ import axios from "axios";
 
 export default function DemoFundingModal() {
   const { mode } = useAccountMode();
-  const { refresh } = useBalance(); // Ya no necesitamos 'loading' ni 'balances' para auto-abrir
+  const { refresh } = useBalance();
   const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
   
   const [customAmount, setCustomAmount] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // ✅ CAMBIO PRINCIPAL: Escuchar evento para abrirse SOLO cuando se pida
+  // ✅ CORRECCIÓN 1: Evitar doble apertura
   useEffect(() => {
-    const handleOpen = () => {
+    const handleOpen = (event) => {
       if (mode === "demo") {
+        // Detiene la propagación para que si hay otro componente igual escuchando, no se entere
+        if (event && typeof event.stopImmediatePropagation === "function") {
+          event.stopImmediatePropagation();
+        }
         onOpen();
       }
     };
@@ -49,10 +53,12 @@ export default function DemoFundingModal() {
     <Modal 
       isOpen={isOpen} 
       onOpenChange={onOpenChange} 
-      isDismissable={true}    // ✅ AHORA SE PUEDE CERRAR CLICKANDO FUERA
-      hideCloseButton={false} // ✅ AHORA TIENE BOTÓN DE CERRAR (X)
+      isDismissable={true}
+      hideCloseButton={false}
       backdrop="blur"
       size="lg"
+      // ✅ CORRECCIÓN 2: Accesibilidad al Modal
+      aria-label="Recargar saldo de cuenta demo"
     >
       <ModalContent>
         {(close) => (
@@ -72,6 +78,7 @@ export default function DemoFundingModal() {
                     variant="bordered"
                     onPress={() => handleFund(opt)}
                     isLoading={isProcessing}
+                    aria-label={`Recargar ${opt} dólares`} // Accesibilidad botones
                   >
                     ${opt.toLocaleString()}
                   </Button>
@@ -81,6 +88,7 @@ export default function DemoFundingModal() {
                   className={`h-24 text-xl border-2 font-semibold ${showCustom ? "border-primary text-primary" : ""}`}
                   variant={showCustom ? "flat" : "bordered"}
                   onPress={() => setShowCustom(true)}
+                  aria-label="Ingresar monto personalizado"
                 >
                   Personalizado
                 </Button>
@@ -96,6 +104,8 @@ export default function DemoFundingModal() {
                     onValueChange={setCustomAmount}
                     size="lg"
                     startContent={<span className="text-default-400">$</span>}
+                    // ✅ CORRECCIÓN 3: Accesibilidad Input
+                    aria-label="Campo para monto personalizado"
                   />
                   <Button 
                     color="primary" 
@@ -104,6 +114,7 @@ export default function DemoFundingModal() {
                     onPress={() => handleFund(Number(customAmount))}
                     isLoading={isProcessing}
                     isDisabled={!customAmount || Number(customAmount) <= 0}
+                    aria-label="Confirmar recarga personalizada"
                   >
                     Confirmar
                   </Button>

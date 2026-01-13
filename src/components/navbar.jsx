@@ -16,12 +16,15 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import Logo from "./objetos/Logo";
 import { useAccountMode } from "../context/AccountModeContext.jsx";
 import { useSession } from "../hooks/use-session.jsx";
+import { useSessionGuard } from "../hooks/useSessionGuard.jsx";
 import UserDropdown from "./objetos/UserDropdown";
 import SaldosDropdown from "./objetos/SaldosDropdown";
+
 import useDarkMode from "use-dark-mode";
 import axios from "axios";
 
 export default function Nav() {
+     useSessionGuard();
   const styleNoVerify = {
     border: "solid 2px #f3003642",
     padding: "6px 10px",
@@ -170,7 +173,7 @@ export default function Nav() {
         {/* Izquierda: Logo */}
         <NavbarBrand className="min-w-[120px]">
           <Link style={{ cursor: "pointer" }} to="/operar" onClick={() => setMenuOpen(false)}>
-            <Logo data={{ height: 100, width: 120 }} />
+            <Logo  size={100}/>
           </Link>
         </NavbarBrand>
 

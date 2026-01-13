@@ -31,7 +31,8 @@ export default function ForgotPassword() {
     <div className="min-h-screen flex items-center justify-center ">
       <Card className="w-full max-w-md p-4">
         <CardHeader className="flex flex-col gap-3 items-center pb-0">
-          <Logo size={50} />
+          <Logo  height={120} width={120} />
+          
           <h1 className="text-xl font-bold">Recuperar Contraseña</h1>
           <p className="text-sm text-default-500 text-center">
             Ingresa tu correo y te enviaremos un enlace para restablecer tu acceso.
@@ -40,7 +41,7 @@ export default function ForgotPassword() {
         
         <CardBody className="gap-4">
           {message && (
-            <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+            <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'alertestyle' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
               {message.text}
             </div>
           )}
