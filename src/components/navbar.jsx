@@ -6,7 +6,7 @@ import {
   Navbar,
   NavbarBrand,
   NavbarContent,
-  Skeleton
+  Skeleton,
 } from "@heroui/react";
 import { Select, SelectItem } from "@heroui/react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
@@ -24,7 +24,7 @@ import useDarkMode from "use-dark-mode";
 import axios from "axios";
 
 export default function Nav() {
-     useSessionGuard();
+  useSessionGuard();
   const styleNoVerify = {
     border: "solid 2px #f3003642",
     padding: "6px 10px",
@@ -89,7 +89,9 @@ export default function Nav() {
     } else {
       html.classList.remove("dark");
       html.classList.remove("light");
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      ).matches;
       html.classList.add(prefersDark ? "dark" : "light");
     }
     setThemeSelection(theme);
@@ -122,17 +124,18 @@ export default function Nav() {
       navigate(path);
       setMenuOpen(false);
     },
-    [navigate]
+    [navigate],
   );
 
   const tabs = useMemo(
     () => [
       { key: "operar", label: "Operar" },
       { key: "analitica", label: "Analítica" },
-      { key: "graficastock", label: "Gráfica" },
+      { key: "graficastock", label: "Herramienta" },
+      { key: "calculadora", label: "Calculadora" },
       { key: "explorar", label: "Explorar" },
     ],
-    []
+    [],
   );
 
   // Datos de usuario
@@ -149,7 +152,7 @@ export default function Nav() {
     try {
       const res = await axios.delete(
         import.meta.env.VITE_API_URL + "/api/auth/logout",
-        { withCredentials: true }
+        { withCredentials: true },
       );
       if (res.status === 200) {
         clearSession();
@@ -172,8 +175,12 @@ export default function Nav() {
       >
         {/* Izquierda: Logo */}
         <NavbarBrand className="min-w-[120px]">
-          <Link style={{ cursor: "pointer" }} to="/operar" onClick={() => setMenuOpen(false)}>
-            <Logo  size={100}/>
+          <Link
+            style={{ cursor: "pointer" }}
+            to="/operar"
+            onClick={() => setMenuOpen(false)}
+          >
+            <Logo size={100} />
           </Link>
         </NavbarBrand>
 
@@ -220,7 +227,10 @@ export default function Nav() {
         </NavbarContent>
 
         {/* Derecha: desktop */}
-        <NavbarContent className="hidden md:flex items-center gap-3" justify="end">
+        <NavbarContent
+          className="hidden md:flex items-center gap-3"
+          justify="end"
+        >
           {/* Skeleton para SaldosDropdown */}
           <Skeleton isLoaded={!isLoading} className="rounded-xl">
             <SaldosDropdown />
@@ -231,13 +241,22 @@ export default function Nav() {
             <Skeleton className="rounded-xl w-[143px] h-[32px]" />
           ) : (
             <>
-              {cuentaVerificada === false && <p style={styleNoVerify}>Cuenta no verificada</p>}
-              {cuentaVerificada === true && <p style={styleVerify}>Cuenta verificada</p>}
+              {cuentaVerificada === false && (
+                <p style={styleNoVerify}>Cuenta no verificada</p>
+              )}
+              {cuentaVerificada === true && (
+                <p style={styleVerify}>Cuenta verificada</p>
+              )}
             </>
           )}
 
           <UserDropdown cuentaVerificada={cuentaVerificada} />
-          <Button className="text-white" color="primary" variant="shadow" onPress={() => navigate("/explorar/deposito")}>
+          <Button
+            className="text-white"
+            color="primary"
+            variant="shadow"
+            onPress={() => navigate("/explorar/deposito")}
+          >
             Depósito
           </Button>
         </NavbarContent>
@@ -250,7 +269,10 @@ export default function Nav() {
             aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
             onPress={() => setMenuOpen((v) => !v)}
           >
-            <Icon icon={menuOpen ? "material-symbols:close" : "mdi:menu"} width={24} />
+            <Icon
+              icon={menuOpen ? "material-symbols:close" : "mdi:menu"}
+              width={24}
+            />
           </Button>
         </NavbarContent>
       </Navbar>
@@ -270,8 +292,8 @@ export default function Nav() {
           className={`absolute right-0 top-0 h-full bg-background border-l border-default-200 shadow-xl transition-transform duration-200 rounded-l-2xl
             ${menuOpen ? "translate-x-0" : "translate-x-full"}`}
           style={{
-            width: "94vw",              // más ancho en móvil
-            maxWidth: 440,              // tope en móviles grandes
+            width: "94vw", // más ancho en móvil
+            maxWidth: 440, // tope en móviles grandes
             paddingRight: "env(safe-area-inset-right)", // safe area
           }}
         >
@@ -311,10 +333,17 @@ export default function Nav() {
               <div
                 className="relative w-12 h-12 flex items-center justify-center rounded-full bg-default-100 shrink-0"
                 style={{
-                  border: cuentaVerificada ? "2px solid #16a34a" : "2px solid #ccc",
+                  border: cuentaVerificada
+                    ? "2px solid #16a34a"
+                    : "2px solid #ccc",
                 }}
               >
-                <Icon icon="solar:user-bold" width={22} height={22} className="text-default-600" />
+                <Icon
+                  icon="solar:user-bold"
+                  width={22}
+                  height={22}
+                  className="text-default-600"
+                />
                 {cuentaVerificada && (
                   <span
                     className="absolute bottom-0 right-0 bg-green-500 text-white rounded-full p-[2px]"
@@ -327,8 +356,12 @@ export default function Nav() {
               </div>
 
               <div className="flex flex-col min-w-0">
-                <span className="text-foreground font-medium truncate">{userName}</span>
-                <span className="text-default-500 text-sm truncate">{userEmail}</span>
+                <span className="text-foreground font-medium truncate">
+                  {userName}
+                </span>
+                <span className="text-default-500 text-sm truncate">
+                  {userEmail}
+                </span>
               </div>
             </div>
             <div className="text-sm text-default-600 -mt-2">
@@ -367,10 +400,18 @@ export default function Nav() {
 
             {/* 4) Acciones y preferencias */}
             <div className="space-y-1">
-              <Button variant="light" className="w-full justify-start" onPress={() => onGo("/explorar/cuenta")}>
+              <Button
+                variant="light"
+                className="w-full justify-start"
+                onPress={() => onGo("/explorar/cuenta")}
+              >
                 Configuración
               </Button>
-              <Button variant="light" className="w-full justify-start" onPress={() => onGo("/explorar/retiro")}>
+              <Button
+                variant="light"
+                className="w-full justify-start"
+                onPress={() => onGo("/explorar/retiro")}
+              >
                 Retirar
               </Button>
               <Button
@@ -384,10 +425,18 @@ export default function Nav() {
 
               <div className="my-2 border-t border-default-200" />
 
-              <Button variant="light" className="w-full justify-start" onPress={() => onGo("/explorar/movimientos")}>
+              <Button
+                variant="light"
+                className="w-full justify-start"
+                onPress={() => onGo("/explorar/movimientos")}
+              >
                 Movimientos
               </Button>
-              <Button variant="light" className="w-full justify-start" onPress={() => onGo("/explorar/ordenes")}>
+              <Button
+                variant="light"
+                className="w-full justify-start"
+                onPress={() => onGo("/explorar/ordenes")}
+              >
                 Órdenes
               </Button>
 
@@ -407,13 +456,23 @@ export default function Nav() {
 
               {/* Panel admin (si aplica) */}
               {isAdmin && (
-                <Button className="w-full justify-center mt-2" color="primary" variant="bordered" onPress={() => onGo("/panel")}>
+                <Button
+                  className="w-full justify-center mt-2"
+                  color="primary"
+                  variant="bordered"
+                  onPress={() => onGo("/panel")}
+                >
                   Panel admin
                 </Button>
               )}
 
               {/* Logout */}
-              <Button className="w-full justify-center mt-4" color="danger" variant="bordered" onPress={handleLogout}>
+              <Button
+                className="w-full justify-center mt-4"
+                color="danger"
+                variant="bordered"
+                onPress={handleLogout}
+              >
                 Cerrar sesión
               </Button>
             </div>

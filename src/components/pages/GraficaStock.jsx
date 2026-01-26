@@ -38,7 +38,7 @@ export default function GraficaStock() {
     mql.addEventListener?.("change", set);
     return () => mql.removeEventListener?.("change", set);
   }, []);
-  const iframeHeight = useMemo(() => (isMobile ? 520 : 700), [isMobile]);
+  const iframeHeight = useMemo(() => (isMobile ? 520 : 800), [isMobile]);
 
   const iframeSrc =
     "https://tvc-invdn-com.investing.com/web/1.12.34/index59-prod.html?carrier=e47b9c69be124c78caafd327fce2b275&time=1660760768&domain_ID=4&lang_ID=4&timezone_ID=58&version=1.12.34&locale=es&timezone=Europe%2FMadrid&pair_ID=1&interval=15&session=24x7&prefix=es&user=guest&family_prefix=tvc6&init_page=live-charts&sock_srv=https%3A%2F%2Fstreaming.forexpros.com%3A443&watchlist=1%2C2%2C3%2C9%2C5%2C7%2C6%2C945629%2C8827%2C10%2C8%2C15%2C52%2C16%2C39%2C2103%2C2110%2C2186&geoc=MX&site=https%3A%2F%2Fes.investing.com";
@@ -49,25 +49,12 @@ export default function GraficaStock() {
         <Nav />
 
         {/* Layout responsive: 1col mobile, 2col desktop */}
-        <div className="pt-5 grid grid-cols-1 md:grid-cols-[1fr_3fr] gap-4">
+        <div style={{height: "100vh", width: "97%", margin: "auto"} } >
           {/* Columna izquierda */}
-          <div className="flex flex-col gap-4">
-            <MarketList
-              onSelect={(symbol) => {
-                setIframeLoaded(false);
-                setSelectedSymbol(symbol);
-              }}
-            />
-
-            <Card className="border border-solid border-[#00689b9e]">
-              <CardBody>
-                <MarketWidget selectedSymbol={selectedSymbol} />
-              </CardBody>
-            </Card>
-          </div>
+        
 
           {/* Columna derecha */}
-          <Card className="border border-solid border-[#00689b9e]">
+          <Card style={{height: "100vh"} } className="border border-solid border-[#00689b9e]">
             <CardBody className="p-3 md:p-6">
               <Skeleton
                 isLoaded={iframeLoaded}

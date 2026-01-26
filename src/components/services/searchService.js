@@ -1,8 +1,5 @@
-// ✅ URL oficial de OpenAI
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-
-// ✅ Token desde variables de entorno
-const BEARER_TOKEN = import.meta.env.VITE_OPENAI_API_KEY; 
+// ✅ YA NO llamamos a OpenAI desde el frontend (CORS + seguridad).
+// Ahora llamamos a tu backend: POST /api/ai/search-symbol
 
 // --- CLAVE DEL CACHÉ EN LOCALSTORAGE ---
 const CACHE_KEY = "inaqstock_search_cache_v1";
@@ -20,7 +17,6 @@ const getCache = () => {
 const saveToCache = (query, result) => {
   try {
     const cache = getCache();
-    // Normalizamos la búsqueda a minúsculas para que "Amazon" y "amazon" sean lo mismo
     cache[query.toLowerCase().trim()] = result;
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
   } catch (e) {
@@ -210,47 +206,33 @@ export const searchService = {
       return cache[normalizedQuery];
     }
 
-    // 3. Si no hay token, usamos fallback
-    if (!BEARER_TOKEN) {
-      console.warn("[searchService] VITE_OPENAI_API_KEY faltante.");
+    // 3. Llamar a BACKEND (sin CORS)
+    const base = import.meta.env.VITE_API_URL;
+    if (!base) {
+      console.warn("[searchService] VITE_API_URL faltante.");
       return DEFAULT_POPULAR_2025.slice();
     }
 
-    const systemPrompt = `Eres un asistente que devuelve símbolos compatibles con Polygon.io.
-Reglas:
-1) Stocks: Ticker MAYÚSCULAS (ej: AMZN).
-2) Cripto: Prefijo X: y termina en USD (ej: X:BTCUSD).
-3) Forex: Prefijo C: y par de 6 letras (ej: C:EURUSD).
-4) SIN texto extra, solo el código o array JSON de códigos.`;
-
-    const payload = {
-      model: "gpt-3.5-turbo", 
-      temperature: 0,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Símbolo para: ${query}` },
-      ],
-    };
-
     try {
-      const response = await fetch(OPENAI_API_URL, {
+      const response = await fetch(`${base}/api/ai/search-symbol`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${BEARER_TOKEN}`,
-        },
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ query }),
       });
 
-      if (!response.ok) return DEFAULT_POPULAR_2025.slice();
+      if (!response.ok) {
+        console.warn("[searchService] backend /api/ai/search-symbol error:", response.status);
+        return DEFAULT_POPULAR_2025.slice();
+      }
 
       const data = await response.json();
-      let raw = data?.choices?.[0]?.message?.content?.trim() || "";
+      let raw = data?.data?.content?.trim() || "";
       raw = cleanText(raw);
 
       const normalized = normalizeOutput(raw, query);
 
-      // Si obtuvimos un resultado válido, LO GUARDAMOS EN CACHÉ
+      // Guardar en caché si es válido
       if (normalized && (typeof normalized === "string" || normalized.length > 0)) {
         saveToCache(normalizedQuery, normalized);
       }

@@ -27,6 +27,7 @@ import SolicitudesVerify from "./components/pages/panel/sections/SolicitudesVeri
 import ForgotPassword from "./components/pages/ForgotPassword.jsx";
 import ResetPassword from "./components/pages/ResetPassword.jsx";
 import Settings from "./components/pages/Settings.jsx"; // ✅ Importación de Ajustes
+import Calculadora from "./components/pages/Calculadora.jsx";
 
 function App() {
   return (
@@ -69,6 +70,7 @@ function App() {
 
         <Route path={"/analitica"} element={<Analitica />} />
         <Route path={"/graficastock"} element={<GraficaStock />} />
+                <Route path={"/calculadora"} element={<Calculadora />} />
         <Route path={"/dashboard"} element={<Dashboard />} />
         <Route path={"/register"} element={<Register />} />
         <Route path={"/verify"} element={<Verify />} />

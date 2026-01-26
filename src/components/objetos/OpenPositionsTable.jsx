@@ -31,33 +31,28 @@ function formatWithSign(value, sign) {
   return abs;
 }
 
-// Heurística para mostrar Skeleton de PnL mientras aún no hay datos “reales”
+/**
+ * IMPORTANTE:
+ * Antes se ocultaba el PnL (Skeleton) cuando:
+ *  - profitLoading=true o pnlReady=false
+ *  - o cuando open==current y recent<20s
+ *
+ * Pero para STOCKS es normal que open==current (precio puede no moverse rápido),
+ * y aun así queremos mostrar 0.00 en vez de skeleton.
+ *
+ * Ahora: solo mostramos Skeleton si explícitamente profitLoading===true
+ * o pnlReady===false. (Sin heurística open==current).
+ */
 function isPnLPending(position) {
-  // Caso explícito si el backend/estado marca que aún no está listo
   if (position?.pnlReady === false || position?.profitLoading === true) return true;
 
-  // Si no existe profit aún
+  // Si no existe profit aún (null/undefined), también pending
   if (position?.profit === undefined || position?.profit === null) return true;
 
-  // Si todo está en cero y el precio actual == apertura y la posición es “muy reciente”, asumimos que todavía no llegó el primer tick
-  const prof = Number(position.profit);
-  const pct = Number(position.profitPercentage);
-  const open = Number(position.openPrice);
-  const cur = Number(position.currentPrice);
-  const recentSecs =
-    position?.openTime ? (Date.now() - new Date(position.openTime).getTime()) / 1000 : Infinity;
+  // Si no existe profitPercentage aún, también pending
+  if (position?.profitPercentage === undefined || position?.profitPercentage === null) return true;
 
-  const looksUninitialized =
-    Number.isFinite(prof) &&
-    Number.isFinite(pct) &&
-    prof === 0 &&
-    pct === 0 &&
-    Number.isFinite(open) &&
-    Number.isFinite(cur) &&
-    open === cur &&
-    recentSecs < 20; // 20s desde que se abrió la operación
-
-  return looksUninitialized;
+  return false;
 }
 
 export default function OpenPositionsTable({ positions = [], onClosePosition, isLoading }) {
@@ -107,7 +102,7 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
         );
 
       case "profit": {
-        // Mostrar Skeleton mientras el PnL “real” aún no llega
+        // Mostrar Skeleton mientras el PnL aún no está listo
         if (isPnLPending(position)) {
           return (
             <div className="flex items-center gap-2">
@@ -117,13 +112,16 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
           );
         }
 
-        const sign = computeSign(position.profit, position.profitPercentage);
+        const profitSafe = position.profit ?? "0.00";
+        const pctSafe = position.profitPercentage ?? "0.00";
+
+        const sign = computeSign(profitSafe, pctSafe);
         const colorClass =
           sign > 0 ? "text-success-600" : sign < 0 ? "text-danger-600" : "text-default-600";
 
-        const profitDisplay = formatWithSign(position.profit, sign);
+        const profitDisplay = formatWithSign(profitSafe, sign);
 
-        const pctNum = Number(position.profitPercentage);
+        const pctNum = Number(pctSafe);
         const pctSign =
           Number.isFinite(pctNum) && pctNum !== 0 ? (pctNum > 0 ? 1 : -1) : sign;
         const pctDisplay = Number.isFinite(pctNum)
@@ -159,7 +157,7 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
         );
 
       case "openTime":
-        return new Date(position.openTime).toLocaleString();
+        return position.openTime ? new Date(position.openTime).toLocaleString() : "-";
 
       case "tp_sl":
         return `${position.tp}/${position.sl}`;

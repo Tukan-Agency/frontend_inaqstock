@@ -1,5 +1,5 @@
- VITE_API_URL=http://localhost:3000
- # VITE_API_URL=https://api.nydaqstock.com
+VITE_API_URL=http://localhost:3000
+# VITE_API_URL=https://api.nydaqstock.com
  #VITE_API_URL=https://58xlb7rw-3000.use2.devtunnels.ms
 
 VITE_POLYGON_API_KEY=7ZDpKAA_vz3jIGp2T2POBDyYR_1RJ5xn
