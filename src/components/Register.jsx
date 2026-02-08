@@ -71,20 +71,55 @@ export default function Register() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
+  const handleCountryChange = (countryCode) => {
+    const countries = [
+      { code: "EC", name: "Ecuador", prefix: "+593", currency: "USD" },
+      { code: "CO", name: "Colombia", prefix: "+57", currency: "COP" },
+      { code: "PE", name: "Perú", prefix: "+51", currency: "PEN" },
+      { code: "MX", name: "México", prefix: "+52", currency: "MXN" },
+      { code: "US", name: "Estados Unidos", prefix: "+1", currency: "USD" },
+      { code: "ES", name: "España", prefix: "+34", currency: "EUR" },
+    ];
+    
+    const selectedCountry = countries.find(c => c.code === countryCode);
+    if (selectedCountry) {
+      setSelectedCountryCode(countryCode);
+      setFormData(prev => ({
+        ...prev,
+        country: {
+          name: selectedCountry.name,
+          code: selectedCountry.prefix,
+          flag: `https://flagcdn.com/${countryCode.toLowerCase()}.svg`
+        },
+        currency: {
+          name: selectedCountry.currency
+        }
+      }));
+    }
+  };
 
-    const validationErrors = validate(
-      formData.email,
-      formData.password,
-      formData.password,
-      formData.cpassword
-    );
-    setError(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
+  const handleSubmit = async () => {
+    console.log("handleSubmit llamado", formData);
+
+    // Validación básica
+    if (!formData.email || !formData.password || !formData.cpassword) {
+      setError({ general: "Email y contraseñas son requeridos" });
+      return false;
+    }
+
+    if (formData.password !== formData.cpassword) {
+      setError({ password: "Las contraseñas no coinciden" });
+      return false;
+    }
+
+    if (formData.password.length < 8) {
+      setError({ password: "La contraseña debe tener al menos 8 caracteres" });
+      return false;
+    }
 
     try {
       setIsLoading(true);
+      console.log("Enviando datos:", formData);
 
       const res = await axios.post(
         import.meta.env.VITE_API_URL + "/api/auth/register",
@@ -97,15 +132,34 @@ export default function Register() {
         }
       );
 
+      console.log("Respuesta del servidor:", res);
+
       if (res.status === 201) {
-        return navigate("/");
+        addToast({
+          title: "¡Registro exitoso!",
+          description: "Tu cuenta ha sido creada correctamente",
+          color: "success",
+          duration: 3000,
+        });
+        navigate("/");
+        return true;
       }
     } catch (e) {
-      setError({ email: e.response?.data?.message || "Error desconocido." });
-      console.error(e);
+      console.error("Error completo en registro:", e);
+      const errorMessage = e.response?.data?.message || e.message || "Error desconocido.";
+      setError({ general: errorMessage });
+      addToast({
+        title: "Error en registro",
+        description: errorMessage,
+        color: "danger",
+        duration: 4000,
+      });
+      throw e;
     } finally {
       setIsLoading(false);
     }
+    
+    return false;
   };
 
   return (
@@ -127,6 +181,7 @@ export default function Register() {
         setFormData={setFormData}
         handleChange={handleChange}
         handleSubmit={handleSubmit}
+        handleCountryChange={handleCountryChange}
         isLoading={isLoading}
         error={error}
         whatsappDifferent={whatsappDifferent}

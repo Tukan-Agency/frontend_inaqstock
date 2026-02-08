@@ -13,6 +13,13 @@
     "ext": "+49",
     "currency": "EUR"
   },
+   {
+    "code": "EC",
+    "name": "Ecuador",
+    "flag": "🇪🇨",
+    "ext": "+593",
+    "currency": "USD"
+  },
   {
     "code": "BF",
     "name": "Burkina Faso",

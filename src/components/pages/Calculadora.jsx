@@ -333,7 +333,7 @@ export default function Calculadora() {
                         </div>
 
                         <Input
-                          label="Tasa de Interés Anual (%)"
+                          label="Tasa de Interés (%)"
                           type="number"
                           name="interestRate"
                           value={formData.interestRate}
@@ -370,18 +370,14 @@ export default function Calculadora() {
                         </div>
 
                         <Input
-                          label="Período (Años)"
+                          label="Período"
                           type="number"
                           name="years"
                           value={formData.years}
                           onChange={handleInputChange}
                           min="0"
                           max="100"
-                          endContent={
-                            <div className="pointer-events-none flex items-center">
-                              <span className="text-default-400 text-small">años</span>
-                            </div>
-                          }
+                          
                           classNames={{
                             input: "text-right"
                           }}
@@ -434,9 +430,7 @@ export default function Calculadora() {
                               maximumFractionDigits: 2
                             })}
                           </p>
-                          <p className="text-default-500 text-sm mt-2">
-                            Después de {formData.years} años con una tasa del {formData.interestRate}%
-                          </p>
+                         
                           
                           {/* Estadísticas adicionales */}
                           <div className="grid grid-cols-2 gap-4 mt-6">
