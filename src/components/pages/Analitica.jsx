@@ -18,17 +18,16 @@ import { Icon } from "@iconify/react";
 import Chart from "react-apexcharts";
 import MarketList from "../../components/objetos/MarketList.jsx";
 import MarketWidget from "../objetos/MarketWidget/MarketWidget.jsx";
-import { useOrdersAggregates } from "../../hooks/useOrdersAggregates.js";
- 
+import { useOrdersAggregates } from "../../hooks/useOrdersAggregates.js"; // Importar el hook
 
 export default function Analitica() {
   const { session } = useSession();
- 
   const navigate = useNavigate();
 
   useEffect(() => {
     if (session.status === "unauthenticated") navigate("/", { replace: true });
   }, [session.status, navigate]);
+  
   if (session.status === "unauthenticated") return null;
 
   const clientId = useMemo(
@@ -51,17 +50,18 @@ export default function Analitica() {
     mql.addEventListener?.("change", set);
     return () => mql.removeEventListener?.("change", set);
   }, []);
+  
   const chartHeight = isMobile ? 280 : 400;
   const roiHeight = isMobile ? 220 : 260;
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedPeriod, setSelectedPeriod] = useState("M"); // "M" | "T" | "S" | "Y"
+  const [selectedPeriod, setSelectedPeriod] = useState("M");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedTrimestre, setSelectedTrimestre] = useState("1");
   const [selectedSemestre, setSelectedSemestre] = useState("1");
-  const [selectedYearIndex, setSelectedYearIndex] = useState("1"); // 1..N como string (Select)
+  const [selectedYearIndex, setSelectedYearIndex] = useState("1");
 
-  const { isLoading, chartData, roiTime, currentBalance, roiData, operationalYears } =
+  const { isLoading, chartData, roiTime, currentBalance, roiData, operationalYears, totals, balanceCalculado } =
     useOrdersAggregates({
       clientId,
       selectedYear,
@@ -103,6 +103,7 @@ export default function Analitica() {
     }),
     [chartHeight, selectedPeriod, isMobile, primaryColor, chartData.labels]
   );
+  
   const chartSeries = useMemo(() => [{ name: "Total", data: chartData.totalValues || [] }], [chartData.totalValues]);
 
   const roiChartOptions = useMemo(
@@ -119,6 +120,7 @@ export default function Analitica() {
     }),
     [roiHeight, roiTime.labels]
   );
+  
   const roiChartSeries = useMemo(() => [{ name: "ROI acumulado", data: roiTime.values }], [roiTime.values]);
 
   const formatCurrency = (n) =>
@@ -148,7 +150,7 @@ export default function Analitica() {
                     <Tab key="M" title="Mes" />
                     <Tab key="T" title="Trimestre" />
                     <Tab key="S" title="Semestre" />
-                    <Tab key="Y" title="Año" /> {/* Año relativo */}
+                    <Tab key="Y" title="Año" />
                   </Tabs>
 
                   {selectedPeriod === "M" && (
@@ -228,7 +230,7 @@ export default function Analitica() {
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm text-default-600 mb-1">Balance</p>
                                 <p className="text-lg font-semibold text-default-900">
-                                  {Number(currentBalance || 0).toLocaleString("es-EC", { style: "currency", currency: "USD", minimumFractionDigits: 2 })} USD
+                                  {formatCurrency(balanceCalculado || currentBalance || 0)}
                                 </p>
                               </div>
                             </div>
@@ -242,12 +244,12 @@ export default function Analitica() {
                                 <Icon icon="mdi:trending-up" className="text-emerald-600 w-4 h-4" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm text-default-600 mb-1">Ganancia promedio</p>
+                                <p className="text-sm text-default-600 mb-1">Ganancias totales</p>
                                 <p className="text-lg font-semibold text-default-900 mb-1">
-                                  {Number(roiData.avgWin || 0).toLocaleString("es-EC", { style: "currency", currency: "USD", minimumFractionDigits: 2 })} USD
+                                  {formatCurrency(totals?.ganancia || 0)}
                                 </p>
                                 <p className="text-xs text-default-400">
-                                  {Number(roiData.avgWin || 0).toFixed(2)} PUNTOS
+                                  {((totals?.ganancia || 0) / (totals?.capital || 1) * 100).toFixed(2)}% ROI
                                 </p>
                               </div>
                             </div>
@@ -261,9 +263,9 @@ export default function Analitica() {
                                 <Icon icon="mdi:trending-down" className="text-red-600 w-4 h-4" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm text-default-600 mb-1">Pérdida promedio</p>
+                                <p className="text-sm text-default-600 mb-1">Pérdidas totales</p>
                                 <p className="text-lg font-semibold text-default-900">
-                                  {Number(roiData.avgLoss || 0).toLocaleString("es-EC", { style: "currency", currency: "USD", minimumFractionDigits: 2 })} USD
+                                  {formatCurrency(totals?.perdida || 0)}
                                 </p>
                               </div>
                             </div>
@@ -284,7 +286,7 @@ export default function Analitica() {
                           <Icon icon="mdi:information-outline" className="text-default-400 w-4 h-4" />
                         </h3>
                         <p className="text-sm text-default-500">
-                          {Number(currentBalance || 0).toLocaleString("es-EC", { style: "currency", currency: "USD", minimumFractionDigits: 2 })} USD
+                          {formatCurrency(balanceCalculado || currentBalance || 0)}
                         </p>
                       </div>
                       <div className="flex gap-1">

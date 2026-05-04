@@ -120,8 +120,6 @@ export default function ListaOrdenes() {
         ]);
 
         const normalized = (ordenes || []).map((o, idx) => {
-          // Intentamos recuperar símbolo si en algún futuro el backend lo manda
-          // Actualmente tu JSON confirma que 'symbol' es undefined en este endpoint
           const foundSymbol = o.symbol || o._raw?.symbol || null;
 
           return {
@@ -152,7 +150,7 @@ export default function ListaOrdenes() {
     return () => { cancelled = true; };
   }, [clientId, mode]);
 
-  // Lógica de Gráficos (se mantiene igual para no romper diseño)
+  // Lógica de Gráficos (se mantiene igual)
   const getWeeklyDataForMonth = (year, month) => { 
     const firstDay = new Date(year, month - 1, 1);
     const lastDay = new Date(year, month, 0);
@@ -289,15 +287,17 @@ export default function ListaOrdenes() {
   const currentData = mode === "demo" ? balances?.demo || {} : balances?.real || {};
   const currentBalance = Number(currentData.balance || 0); 
 
+  // CORREGIDO: Ahora es SUMA total de ganancias y pérdidas, no promedio
   const roiData = useMemo(() => {
-    const wins = tableRows.filter((r) => Number(r.ganancia) > 0);
-    const losses = tableRows.filter((r) => Number(r.perdida) > 0);
-    const sumWins = wins.reduce((a, r) => a + Number(r.ganancia), 0);
-    const sumLosses = losses.reduce((a, r) => a + Number(r.perdida), 0);
-    const avgWin = wins.length ? sumWins / wins.length : 0;
-    const avgLoss = losses.length ? sumLosses / losses.length : 0;
-    return { avgWin, avgLoss };
+    const totalGanancia = tableRows.reduce((sum, r) => sum + Number(r.ganancia || 0), 0);
+    const totalPerdida = tableRows.reduce((sum, r) => sum + Number(r.perdida || 0), 0);
+    return { totalGanancia, totalPerdida };
   }, [tableRows]);
+
+  // CORREGIDO: Balance calculado como capital + ganancias - pérdidas - retiros
+  const balanceCalculado = useMemo(() => {
+    return totals.capital + totals.ganancia - totals.perdida - totals.retiros;
+  }, [totals]);
 
   // PDF
   const [isPdfRendering, setIsPdfRendering] = useState(false);
@@ -346,10 +346,8 @@ export default function ListaOrdenes() {
   const modalItemsTotal = sumActionsCapital(modalActions);
   const modalFinalTotal = modalOrder?.isCapital ? modalItemsTotal : Number(modalOrder?.operationValue || 0);
   
-  // Como el símbolo es undefined en el JSON, mostramos texto alternativo si es trading
   const isTrading = !modalOrder?.isCapital && !modalOrder?.isWithdrawl;
   const displaySymbol = modalOrder?.symbol; 
-  console.log(modalOrder);
 
   return (
     <div className="p-6">
@@ -373,15 +371,54 @@ export default function ListaOrdenes() {
               <div className="flex-1"><Chart options={chartOptions} series={chartSeries} type="area" height={400} /></div>
               <div className="w-72 space-y-4">
                 <h4 className="text-base font-medium text-default-700 mb-4">Rendimiento de trades</h4>
-                <Card className="border-0 shadow-sm bg-default-50 dark:bg-default-100"><CardBody className="py-4 px-4"><div className="flex items-start gap-3"><div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center"><Icon icon="mdi:wallet" className="text-blue-600"/></div><div><p className="text-sm text-default-600 mb-1">Balance</p><p className="text-lg font-semibold">{formatCurrency(currentBalance)}</p></div></div></CardBody></Card>
-                <Card className="border-0 shadow-sm bg-default-50 dark:bg-default-100"><CardBody className="py-4 px-4"><div className="flex items-start gap-3"><div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center"><Icon icon="mdi:trending-up" className="text-emerald-600"/></div><div><p className="text-sm text-default-600">Ganancia promedio</p><p className="text-lg font-semibold text-emerald-600">{formatCurrency(roiData.avgWin)}</p></div></div></CardBody></Card>
-                <Card className="border-0 shadow-sm bg-default-50 dark:bg-default-100"><CardBody className="py-4 px-4"><div className="flex items-start gap-3"><div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center"><Icon icon="mdi:trending-down" className="text-red-600"/></div><div><p className="text-sm text-default-600">Pérdida promedio</p><p className="text-lg font-semibold text-red-600">{formatCurrency(roiData.avgLoss)}</p></div></div></CardBody></Card>
+                {/* CORREGIDO: Balance calculado correctamente */}
+                <Card className="border-0 shadow-sm bg-default-50 dark:bg-default-100">
+                  <CardBody className="py-4 px-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                        <Icon icon="mdi:wallet" className="text-blue-600"/>
+                      </div>
+                      <div>
+                        <p className="text-sm text-default-600 mb-1">Balance</p>
+                        <p className="text-lg font-semibold">{formatCurrency(balanceCalculado)}</p>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+                {/* CORREGIDO: Suma total de ganancias */}
+                <Card className="border-0 shadow-sm bg-default-50 dark:bg-default-100">
+                  <CardBody className="py-4 px-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                        <Icon icon="mdi:trending-up" className="text-emerald-600"/>
+                      </div>
+                      <div>
+                        <p className="text-sm text-default-600">Ganancias totales</p>
+                        <p className="text-lg font-semibold text-emerald-600">{formatCurrency(roiData.totalGanancia)}</p>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+                {/* CORREGIDO: Suma total de pérdidas */}
+                <Card className="border-0 shadow-sm bg-default-50 dark:bg-default-100">
+                  <CardBody className="py-4 px-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center">
+                        <Icon icon="mdi:trending-down" className="text-red-600"/>
+                      </div>
+                      <div>
+                        <p className="text-sm text-default-600">Pérdidas totales</p>
+                        <p className="text-lg font-semibold text-red-600">{formatCurrency(roiData.totalPerdida)}</p>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
               </div>
             </div>
           </div>
 
           {/* PDF Hidden */}
-          {isPdfRendering && <div ref={pdfContentRef} style={{position:"fixed",left:"-9999px",background:"#fff",padding:24,width:600}}><div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",marginBottom:12}}><div>Mi Cuenta</div><div>ID: {clientIdQuery}</div><div>Balance: {formatCurrency(currentBalance)}</div></div><h2 style={{textAlign:"center"}}>REPORTE</h2><table style={{width:"100%"}}><thead><tr><th>Op</th><th>Fecha</th><th>Ganancia</th><th>Pérdida</th></tr></thead><tbody>{tableRows.map(r=>(<tr key={r.id}><td>{r.operacion}</td><td>{r.fecha}</td><td>{formatCurrency(r.ganancia)}</td><td>{formatCurrency(r.perdida)}</td></tr>))}</tbody></table></div>}
+          {isPdfRendering && <div ref={pdfContentRef} style={{position:"fixed",left:"-9999px",background:"#fff",padding:24,width:600}}><div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",marginBottom:12}}><div>Mi Cuenta</div><div>ID: {clientIdQuery}</div><div>Balance: {formatCurrency(balanceCalculado)}</div></div><h2 style={{textAlign:"center"}}>REPORTE</h2><table style={{width:"100%"}}><thead><tr><th>Op</th><th>Fecha</th><th>Ganancia</th><th>Pérdida</th></tr></thead><tbody>{tableRows.map(r=>(<tr key={r.id}><td>{r.operacion}</td><td>{r.fecha}</td><td>{formatCurrency(r.ganancia)}</td><td>{formatCurrency(r.perdida)}</td></tr>))}</tbody></table></div>}
 
           <Card className="mt-6 border-0 shadow-md rounded-2xl">
             <CardBody className="p-0">
@@ -407,7 +444,7 @@ export default function ListaOrdenes() {
         </CardBody>
       </Card>
 
-      {/* --- MODAL DETALLES (TEXTO SOLAMENTE, SIN ICONOS) --- */}
+      {/* MODAL DETALLES */}
       <Modal isOpen={isDetailsOpen} onOpenChange={setIsDetailsOpen} size="xl" scrollBehavior="inside">
         <ModalContent>
           {(onClose) => (
@@ -430,7 +467,6 @@ export default function ListaOrdenes() {
                         <TableColumn className="text-right">VALOR</TableColumn>
                       </TableHeader>
                       <TableBody>
-                        {/* 1. MOSTRAR SÍMBOLO O TEXTO GENÉRICO SI ES TRADING */}
                         {isTrading && (
                           <TableRow key="trading-info">
                             <TableCell>
@@ -451,7 +487,6 @@ export default function ListaOrdenes() {
                           </TableRow>
                         )}
 
-                        {/* 2. MOSTRAR ACCIONES DESGLOSADAS SI EXISTEN */}
                         {modalActions.map((a, i) => (
                             <TableRow key={`${a._id || i}`}>
                               <TableCell>
@@ -464,7 +499,6 @@ export default function ListaOrdenes() {
                             </TableRow>
                         ))}
 
-                        {/* 3. TOTAL */}
                         {(modalActions.length > 0) && (
                           <TableRow key="total-row" className="border-t border-default-200">
                             <TableCell>
