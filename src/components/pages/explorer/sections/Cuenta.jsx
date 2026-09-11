@@ -1,16 +1,24 @@
 import { Card, CardBody } from "@heroui/card";
 import AccountInfo from "../sections/components/Accountlnfo.jsx";
 import ChangePasswordForm from "./components/ChangePasswordCard.jsx";
-import { changeMyPassword } from "../../../services/account.js"; // NUEVO import
-// Si tu ruta real difiere, ajústala
+import { changeMyPassword } from "../../../services/account.js";
+import { useSession } from "../../../../hooks/use-session.jsx"; // Asegúrate que la ruta sea correcta
 
 export default function Cuenta() {
+  // Obtenemos la función para refrescar la sesión del contexto
+  const { refreshSession } = useSession();
+
   const handleChangePassword = async (pwd) => {
     if (!pwd) return;
     try {
       await changeMyPassword(pwd);
+      
+      // CRÍTICO: Refrescamos la sesión inmediatamente después del cambio exitoso.
+      // Esto actualiza el estado local con el nuevo token/cookie que devolvió el backend.
+      await refreshSession();
+
       // TODO: toast.success("Contraseña actualizada");
-      console.log("Contraseña actualizada");
+      console.log("Contraseña actualizada y sesión refrescada");
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
@@ -34,7 +42,8 @@ export default function Cuenta() {
                   Actualiza aquí tu información personal
                 </p>
               </header>
-              <AccountInfo />
+              {/* Pasamos refreshSession por si AccountInfo también lo necesita al guardar cambios */}
+              <AccountInfo onUpdateSuccess={refreshSession} />
             </CardBody>
           </Card>
         </section>

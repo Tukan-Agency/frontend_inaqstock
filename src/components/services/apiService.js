@@ -5,7 +5,7 @@ const API_BASE_URL =
   (typeof process !== "undefined" ? process.env?.VITE_API_URL : "") ||
   "";
 
-// 1. Crear instancia de Axios
+// 1. Crear instancia de Axios (Configuración base)
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -54,7 +54,7 @@ if (import.meta?.env?.DEV) {
 
 /**
  * 3. EXPORTAR apiDataFetch
- * Usamos la instancia 'api' para que pase por los interceptores
+ * CORREGIDO: Asegura withCredentials siempre
  */
 export const apiDataFetch = async (url, method = "GET", data = null, headers = {}) => {
   try {
@@ -68,11 +68,15 @@ export const apiDataFetch = async (url, method = "GET", data = null, headers = {
       url,
       method: upperMethod,
       headers: { ...headers },
-      data: data
+      data: data,
+      // -------------------------------------------------------------
+      // CORRECCIÓN: Forzamos el envío de cookies siempre.
+      // Si usamos 'client = axios' (absoluto), esto es OBLIGATORIO.
+      // Si usamos 'client = api' (relativo), esto ya está, pero no hace daño.
+      // -------------------------------------------------------------
+      withCredentials: true 
     };
 
-    // Si usas 'api' instance, baseURL ya está configurada, no la sobreescribas si no es necesario
-    
     const response = await client.request(config);
     return response.data;
   } catch (error) {
