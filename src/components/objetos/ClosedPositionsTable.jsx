@@ -128,13 +128,13 @@ export default function ClosedPositionsTable({ positions = [], isLoading }) {
       <div className="flex items-center justify-center flex-col min-h-[200px] m-auto">
         <div
           style={{
-            background: "#18A77724",
+            background: "#00689824",
             padding: "26px",
             borderRadius: "73px",
             marginBottom: "13px",
           }}
         >
-          <Icon color="#18A777" icon="zondicons:close-solid" width={80} />
+          <Icon color="#3285ab" icon="zondicons:close-solid" width={80} />
         </div>
         <h2>No tienes posiciones cerradas.</h2>
       </div>

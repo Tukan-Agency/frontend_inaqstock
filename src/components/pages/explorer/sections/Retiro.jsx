@@ -103,7 +103,7 @@ export default function Retiro() {
               <div className="w-14 h-14 rounded-md flex items-center justify-center bg-[#e6f0f5]">
                 <Icon icon="mdi:bank" width={28} color="#277fa0" />
               </div>
-              <span className="text-[15px] font-medium text-[#111727] dark:text-[#18A777]">Banco</span>
+              <span className="text-[15px] font-medium text-[#00689B]">Banco</span>
             </div>
           </div>
 
@@ -175,7 +175,7 @@ export default function Retiro() {
               <Button
                 type="submit"
                 size="md"
-                className="px-12 h-12 rounded-xl bg-[#111727] text-white hover:bg-[#0b0f1a] dark:bg-[#18A777] dark:hover:bg-[#138661]"
+                className="px-12 h-12 rounded-xl bg-[#00689B] text-white hover:opacity-90"
                 isDisabled={!canSubmit || isSubmitting}
                 isLoading={isSubmitting}
               >

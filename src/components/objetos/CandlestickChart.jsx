@@ -1,185 +1,395 @@
-/* eslint-disable react/prop-types */
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import Chart from "react-apexcharts";
 import { CircularProgress } from "@heroui/progress";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { addToast } from "@heroui/react";
 
-import { formatMarketPrice } from "../../utils/marketPrice.js";
-
+/**
+ * Gráfico OHLC con “brush” y línea de precio en tiempo real.
+ *
+ * Props:
+ * - data: Array<{ t, o, h, l, c, v? }>
+ * - loading: boolean
+ * - title: string
+ * - height: number
+ * - showToolbar: boolean
+ * - colors: { upward, downward }
+ * - theme: "dark" | "light"
+ * - chartType: "candlestick" | "line"
+ * - enableBrush: boolean
+ * - maxPoints: number
+ * - initialRange: number
+ * - showBrushOnlyOnMobile: boolean
+ * - livePrice: number | null
+ * - livePriceSymbol: string
+ */
 export default function CandlestickChart({
   data = [],
   loading = false,
   title = "Gráfico OHLC",
   height = 350,
-  colors = { upward: "#0b827b", downward: "#e74c3c" },
+  showToolbar = false,
+  colors = {
+    upward: "#0b827b",
+    downward: "#e74c3c",
+  },
+  theme = "dark",
   chartType = "candlestick",
-  maxPoints = 260,
+  enableBrush = true,
+  maxPoints = 600,
+  initialRange = 200,
+  showBrushOnlyOnMobile = true,
   livePrice = null,
   livePriceSymbol = "",
-  liveMode = null,
 }) {
-  const containerRef = useRef(null);
-  const [chartWidth, setChartWidth] = useState(1000);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-  const width = chartWidth;
-  const margin = { top: title ? 36 : 20, right: 30, bottom: 36, left: 82 };
-  const plotWidth = width - margin.left - margin.right;
-  const plotHeight = height - margin.top - margin.bottom;
+  const chartId = "candles";
+  const chartRef = useRef(null);
 
-  const candles = useMemo(() => data
-    .filter((item) => [item.t, item.o, item.h, item.l, item.c].every((value) => Number.isFinite(Number(value))))
-    .slice(-maxPoints)
-    .map((item) => ({
-      t: Number(item.t),
-      o: Number(item.o),
-      h: Number(item.h),
-      l: Number(item.l),
-      c: Number(item.c),
-    })), [data, maxPoints]);
-
-  const domain = useMemo(() => {
-    if (!candles.length) return { min: 0, max: 1 };
-    let min = Math.min(...candles.map((item) => item.l));
-    let max = Math.max(...candles.map((item) => item.h));
-    if (Number.isFinite(livePrice)) {
-      min = Math.min(min, Number(livePrice));
-      max = Math.max(max, Number(livePrice));
-    }
-    const range = Math.max(max - min, Math.abs(max) * 0.01, 1);
-    return { min: min - range * 0.06, max: max + range * 0.06 };
-  }, [candles, livePrice]);
-
-  const xAt = (index) => margin.left + (index + 0.5) * (plotWidth / candles.length);
-  const yAt = (value) => margin.top + ((domain.max - value) / (domain.max - domain.min)) * plotHeight;
-  const candleWidth = Math.max(1.5, Math.min(12, (plotWidth / Math.max(candles.length, 1)) * 0.68));
-  const yTicks = Array.from({ length: 6 }, (_, index) => domain.max - ((domain.max - domain.min) * index) / 5);
-  const xTickIndexes = [...new Set(Array.from({ length: Math.min(7, candles.length) }, (_, index) =>
-    Math.round((index * (candles.length - 1)) / Math.max(1, Math.min(6, candles.length - 1))))
-  )];
-  const hovered = hoveredIndex == null ? null : candles[hoveredIndex];
-
+  // Detectar móvil (<= 768px)
+  const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    if (!containerRef.current) return undefined;
-    const observer = new ResizeObserver(([entry]) => {
-      setChartWidth(Math.max(320, Math.round(entry.contentRect.width)));
-    });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener?.("change", update);
+    return () => mql.removeEventListener?.("change", update);
   }, []);
 
-  if (loading) {
-    return <div className="flex h-full w-full items-center justify-center"><CircularProgress aria-label="Cargando gráfico" /></div>;
-  }
+  // Controlar si se muestra el brush realmente
+  const brushEnabledFinal =
+    chartType === "candlestick" &&
+    enableBrush &&
+    (!showBrushOnlyOnMobile || isMobile);
 
-  if (!candles.length) {
+  // Recortar dataset si excede maxPoints
+  const sliced = useMemo(() => {
+    if (!Array.isArray(data)) return [];
+    return data.length > maxPoints ? data.slice(-maxPoints) : data;
+  }, [data, maxPoints]);
+
+  const numberFmt = useMemo(
+    () =>
+      new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    []
+  );
+
+  // Serie principal
+  const series = useMemo(() => {
+    if (chartType === "candlestick") {
+      return [
+        {
+          name: "OHLC",
+          data: sliced.map((d) => ({
+            x: d.t, // timestamp (ms) o Date
+            y: [d.o, d.h, d.l, d.c],
+          })),
+        },
+      ];
+    }
+    return [
+      {
+        name: "Close",
+        data: sliced.map((d) => ({
+          x: d.t,
+          y: d.c,
+        })),
+      },
+    ];
+  }, [sliced, chartType]);
+
+  // Extremos base del eje Y a partir de los datos visibles
+  const { baseMin, baseMax } = useMemo(() => {
+    if (!sliced.length) return { baseMin: 0, baseMax: 1 };
+    if (chartType === "candlestick") {
+      let min = Number.POSITIVE_INFINITY;
+      let max = Number.NEGATIVE_INFINITY;
+      for (const d of sliced) {
+        if (typeof d.l === "number" && d.l < min) min = d.l;
+        if (typeof d.h === "number" && d.h > max) max = d.h;
+      }
+      if (!Number.isFinite(min) || !Number.isFinite(max)) return { baseMin: 0, baseMax: 1 };
+      if (min === max) max = min + 1; // evitar rango cero
+      return { baseMin: min, baseMax: max };
+    } else {
+      let min = Number.POSITIVE_INFINITY;
+      let max = Number.NEGATIVE_INFINITY;
+      for (const d of sliced) {
+        const y = Number(d.c);
+        if (Number.isFinite(y)) {
+          if (y < min) min = y;
+          if (y > max) max = y;
+        }
+      }
+      if (!Number.isFinite(min) || !Number.isFinite(max)) return { baseMin: 0, baseMax: 1 };
+      if (min === max) max = min + 1;
+      return { baseMin: min, baseMax: max };
+    }
+  }, [sliced, chartType]);
+
+  // Calcular dominio del eje Y incluyendo siempre livePrice con padding
+  const { yMin, yMax } = useMemo(() => {
+    let min = baseMin;
+    let max = baseMax;
+    if (typeof livePrice === "number" && Number.isFinite(livePrice)) {
+      if (livePrice < min) min = livePrice;
+      if (livePrice > max) max = livePrice;
+    }
+    // padding del 3% del rango (o pequeño mínimo)
+    let span = max - min;
+    if (!Number.isFinite(span) || span <= 0) span = Math.max(1, max * 0.01);
+    const pad = Math.max(span * 0.03, Math.max(0.5, max * 0.001));
+    return { yMin: min - pad, yMax: max + pad };
+  }, [baseMin, baseMax, livePrice]);
+
+  // Rango inicial para el brush
+  const { initMin, initMax } = useMemo(() => {
+    if (!sliced.length) return { initMin: 0, initMax: 0 };
+    const last = sliced.length;
+    const minIndex = Math.max(0, last - initialRange);
+    return { initMin: sliced[minIndex].t, initMax: sliced[last - 1].t };
+  }, [sliced, initialRange]);
+
+  // Animaciones mínimas (evitar lag en velas)
+  const animations = useMemo(
+    () => ({
+      enabled: chartType !== "candlestick",
+      speed: 300,
+      animateGradually: { enabled: false },
+      dynamicAnimation: { enabled: chartType !== "candlestick", speed: 250 },
+    }),
+    [chartType]
+  );
+
+  // Evitar spam de toast “sin datos”
+  const toastShownRef = useRef(false);
+
+  // Anotación de precio en vivo
+  const liveAnnotations = useMemo(() => {
+    if (livePrice == null) return { yaxis: [] };
+    return {
+      yaxis: [
+        {
+          y: livePrice,
+          borderColor: "#1E90FF",
+          strokeDashArray: 0,
+          label: {
+            show: true,
+            text: `${livePriceSymbol || "Live"} ${numberFmt.format(livePrice)}`,
+            style: {
+              background: "#1E90FF",
+              color: "#fff",
+              fontSize: "11px",
+              fontWeight: 600,
+            },
+          },
+        },
+      ],
+    };
+  }, [livePrice, livePriceSymbol, numberFmt]);
+
+  // Opciones del gráfico principal
+  const options = useMemo(
+    () => ({
+      chart: {
+        id: chartId,
+        type: chartType,
+        height,
+        toolbar: { show: showToolbar },
+        animations,
+        zoom: { enabled: chartType === "candlestick", type: "x" },
+        redrawOnParentResize: true,
+        redrawOnWindowResize: true,
+      },
+      title: {
+        text: title,
+        align: "left",
+        style: {
+          color: "#3386ac",
+          fontSize: "16px",
+          fontWeight: "bold",
+        },
+      },
+      xaxis: {
+        type: "datetime",
+        labels: {
+          style: { colors: "#3386ac" },
+          format: "dd MMM",
+          datetimeUTC: false,
+        },
+        tooltip: { enabled: false },
+      },
+      yaxis: {
+        min: yMin,
+        max: yMax,
+        tickAmount: 6,
+        forceNiceScale: true,
+        decimalsInFloat: 2,
+        tooltip: { enabled: true },
+        labels: {
+          style: { colors: "#3386ac" },
+          formatter: (val) => numberFmt.format(val),
+        },
+      },
+      tooltip: {
+        theme: theme,
+        style: {
+          fontSize: "12px",
+          fontFamily: "inherit",
+        },
+        onDatasetHover: { highlightDataSeries: false },
+        shared: false,
+        intersect: true,
+        custom:
+          chartType === "candlestick"
+            ? ({ seriesIndex, dataPointIndex, w }) => {
+                try {
+                  const open = w.globals.seriesCandleO[seriesIndex][dataPointIndex];
+                  const high = w.globals.seriesCandleH[seriesIndex][dataPointIndex];
+                  const low = w.globals.seriesCandleL[seriesIndex][dataPointIndex];
+                  const close = w.globals.seriesCandleC[seriesIndex][dataPointIndex];
+                  return `<div style="padding:6px;font-size:12px">
+                    <div><b>Open:</b> ${numberFmt.format(open)}</div>
+                    <div><b>High:</b> ${numberFmt.format(high)}</div>
+                    <div><b>Low:</b> ${numberFmt.format(low)}</div>
+                    <div><b>Close:</b> ${numberFmt.format(close)}</div>
+                  </div>`;
+                } catch {
+                  return "";
+                }
+              }
+            : undefined,
+      },
+      dataLabels: { enabled: false },
+      grid: { strokeDashArray: 3 },
+      stroke:
+        chartType === "candlestick"
+          ? { width: 1 }
+          : { width: 1, curve: "straight" },
+      markers: { size: 0 },
+      plotOptions:
+        chartType === "candlestick"
+          ? {
+              candlestick: {
+                colors: {
+                  upward: colors.upward,
+                  downward: colors.downward,
+                },
+                wick: { useFillColor: true },
+              },
+            }
+          : {},
+      annotations: liveAnnotations,
+    }),
+    [
+      chartType,
+      height,
+      showToolbar,
+      animations,
+      title,
+      theme,
+      colors,
+      liveAnnotations,
+      numberFmt,
+      yMin,
+      yMax,
+    ]
+  );
+
+  // Serie y opciones del brush
+  const brushSeries = useMemo(
+    () => [
+      {
+        name: "Range",
+        data: sliced.map((d) => ({ x: d.t, y: d.c })), // cierre para optimizar
+      },
+    ],
+    [sliced]
+  );
+
+  const brushOptions = useMemo(
+    () => ({
+      chart: {
+        id: "candles-range",
+        type: "bar",
+        animations,
+        brush: { enabled: true, target: chartId },
+        selection: {
+          enabled: true,
+          xaxis: { min: initMin, max: initMax },
+          fill: { color: "#90CAF9", opacity: 0.3 },
+          stroke: { color: "#0D47A1" },
+        },
+        toolbar: { show: false },
+        zoom: { enabled: false },
+        sparkline: { enabled: true },
+      },
+      dataLabels: { enabled: false },
+      tooltip: { enabled: false },
+      xaxis: { type: "datetime" },
+      yaxis: { labels: { show: false } },
+      grid: { strokeDashArray: 2 },
+    }),
+    [animations, initMin, initMax]
+  );
+
+  // Mantener y-axis y anotación sincronizados sin re-render completo
+  useEffect(() => {
+    try {
+      window.ApexCharts?.exec(chartId, "updateOptions", {
+        yaxis: { min: yMin, max: yMax },
+        annotations: liveAnnotations,
+      }, false, true);
+    } catch {}
+  }, [yMin, yMax, liveAnnotations]);
+
+  // Loading
+  if (loading) {
     return (
-      <div className="flex h-full w-full items-center justify-center px-6 text-center text-foreground/60">
-        No hay cotizaciones disponibles para este periodo.
+      <div className="w-full h-full flex items-center justify-center">
+        <CircularProgress strokeWidth={4} aria-label="Cargando gráfico..." />
       </div>
     );
   }
 
-  const linePoints = candles.map((item, index) => `${xAt(index)},${yAt(item.c)}`).join(" ");
-  const liveY = Number.isFinite(livePrice) ? yAt(Number(livePrice)) : null;
-  const liveColor = liveMode === "provider-ws" ? "#2563eb" : "#f59e0b";
+  // Sin datos
+  if (!sliced || sliced.length === 0) {
+    if (!toastShownRef.current) {
+      addToast?.({
+        title: "Sin datos",
+        description: "No hay datos disponibles para este mercado en el rango seleccionado.",
+        color: "Warning",
+        duration: 3000,
+      });
+      toastShownRef.current = true;
+    }
+    return (
+      <div className="w-full h-full flex items-center justify-center text-foreground/60">
+        <p>No hay datos disponibles para este mercado en el rango seleccionado.</p>
+      </div>
+    );
+  }
 
   return (
-    <div ref={containerRef} className="relative w-full" style={{ height }}>
-      <svg
-        className="block h-full w-full select-none"
-        viewBox={`0 0 ${width} ${height}`}
-        role="img"
-        aria-label={`${title || livePriceSymbol}, gráfico de ${chartType === "candlestick" ? "velas" : "línea"}`}
-        onMouseLeave={() => setHoveredIndex(null)}
-      >
-        <defs>
-          <linearGradient id="market-line-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1686b0" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#1686b0" stopOpacity="0" />
-          </linearGradient>
-        </defs>
+    <div style={{ width: "100%", height: "100%" }}>
+      {/* Gráfico principal */}
+      <div style={{ height }}>
+        <Chart
+          ref={chartRef}
+          options={options}
+          series={series}
+          type={chartType}
+          height="100%"
+          width="100%"
+        />
+      </div>
 
-        {title && <text x={margin.left} y="21" fill="#18A777" fontSize="14" fontWeight="700">{title}</text>}
-        {yTicks.map((tick) => {
-          const y = yAt(tick);
-          return (
-            <g key={tick}>
-              <line x1={margin.left} x2={width - margin.right} y1={y} y2={y} stroke="#94a3b8" strokeOpacity="0.28" strokeDasharray="4 4" />
-              <text x={margin.left - 10} y={y + 4} textAnchor="end" fill="#18A777" fontSize="11">
-                {formatMarketPrice(tick, livePriceSymbol, true)}
-              </text>
-            </g>
-          );
-        })}
-
-        {chartType === "candlestick" ? candles.map((item, index) => {
-          const x = xAt(index);
-          const rising = item.c >= item.o;
-          const color = rising ? colors.upward : colors.downward;
-          const bodyTop = yAt(Math.max(item.o, item.c));
-          const bodyBottom = yAt(Math.min(item.o, item.c));
-          return (
-            <g key={`${item.t}-${index}`} onMouseEnter={() => setHoveredIndex(index)}>
-              <line x1={x} x2={x} y1={yAt(item.h)} y2={yAt(item.l)} stroke={color} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-              <rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={Math.max(1.5, bodyBottom - bodyTop)} fill={color} />
-              <rect x={x - Math.max(candleWidth, 8) / 2} y={margin.top} width={Math.max(candleWidth, 8)} height={plotHeight} fill="transparent" />
-            </g>
-          );
-        }) : (
-          <>
-            <polygon
-              points={`${linePoints} ${xAt(candles.length - 1)},${margin.top + plotHeight} ${xAt(0)},${margin.top + plotHeight}`}
-              fill="url(#market-line-fill)"
-            />
-            <polyline points={linePoints} fill="none" stroke="#1686b0" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-            {candles.map((item, index) => (
-              <rect
-                key={`${item.t}-${index}`}
-                x={xAt(index) - Math.max(candleWidth, 8) / 2}
-                y={margin.top}
-                width={Math.max(candleWidth, 8)}
-                height={plotHeight}
-                fill="transparent"
-                onMouseEnter={() => setHoveredIndex(index)}
-              />
-            ))}
-          </>
-        )}
-
-        {liveY != null && (
-          <g>
-            <line
-              x1={margin.left}
-              x2={width - margin.right}
-              y1={liveY}
-              y2={liveY}
-              stroke={liveColor}
-              strokeWidth="1.5"
-              strokeDasharray={liveMode === "provider-ws" ? undefined : "6 4"}
-              vectorEffect="non-scaling-stroke"
-            />
-            <rect x={width - margin.right - 106} y={liveY - 11} width="106" height="22" rx="4" fill={liveColor} />
-            <text x={width - margin.right - 6} y={liveY + 4} textAnchor="end" fill="white" fontSize="11" fontWeight="700">
-              {formatMarketPrice(livePrice, livePriceSymbol)}
-            </text>
-          </g>
-        )}
-
-        {xTickIndexes.map((index) => (
-          <text key={candles[index].t} x={xAt(index)} y={height - 10} textAnchor="middle" fill="#18A777" fontSize="11">
-            {new Date(candles[index].t).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
-          </text>
-        ))}
-      </svg>
-
-      {hovered && (
-        <div
-          className="pointer-events-none absolute z-10 rounded-lg border border-default-200 bg-content1/95 px-3 py-2 text-xs shadow-lg backdrop-blur"
-          style={{ left: `${Math.min(78, Math.max(10, (xAt(hoveredIndex) / width) * 100))}%`, top: 42 }}
-        >
-          <div className="mb-1 font-semibold">{new Date(hovered.t).toLocaleString()}</div>
-          <div>Apertura: {formatMarketPrice(hovered.o, livePriceSymbol)}</div>
-          <div>Máximo: {formatMarketPrice(hovered.h, livePriceSymbol)}</div>
-          <div>Mínimo: {formatMarketPrice(hovered.l, livePriceSymbol)}</div>
-          <div>Cierre: {formatMarketPrice(hovered.c, livePriceSymbol)}</div>
+      {/* Brush SOLO si está habilitado y (móvil || desactivado el modo “solo móvil”) */}
+      {brushEnabledFinal && (
+        <div style={{ marginTop: 8, height: 130 }}>
+          <Chart options={brushOptions} series={brushSeries} type="bar" height="100%" width="100%" />
         </div>
       )}
     </div>

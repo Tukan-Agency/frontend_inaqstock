@@ -76,7 +76,7 @@ export default function NewsPanel({ symbol }) {
                 <div className="flex-shrink-0 mt-1">
                   <Icon
                     icon={getTickerIcon(item.tickers)}
-                    className="text-[#18A777]"
+                    className="text-[#00689b]"
                     width={20}
                     height={20}
                   />
@@ -122,7 +122,7 @@ export default function NewsPanel({ symbol }) {
                     href={item.article_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-[#18A777] hover:underline flex items-center gap-1"
+                    className="text-xs text-[#00689b] hover:underline flex items-center gap-1"
                   >
                     Leer artículo completo
                     <Icon icon="material-symbols:open-in-new" width={12} />

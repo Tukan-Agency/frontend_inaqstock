@@ -1,11 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { SettingsService } from "../components/services/settingsService.js";
-import {
-  defaultBrandingUrls,
-  fixAssetUrl,
-  readBrandingCache,
-  writeBrandingCache,
-} from "../utils/branding.js";
 
 const SettingsContext = createContext();
 
@@ -17,88 +11,64 @@ export const useSettings = () => {
   return context;
 };
 
-const cached = readBrandingCache();
-const defaults = defaultBrandingUrls();
+// Helper corregido: Solo quita '/api' si está al final, respetando subdominios como api.dominio.com
+const fixUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  
+  let baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+  // Si la URL base termina en "/api" (ej: localhost:3000/api), lo quitamos.
+  // Pero si es "https://api.midominio.com", NO lo toca.
+  if (baseUrl.endsWith("/api")) {
+    baseUrl = baseUrl.slice(0, -4);
+  }
+  
+  // Evitar doble barra //
+  if (baseUrl.endsWith("/") && path.startsWith("/")) {
+    baseUrl = baseUrl.slice(0, -1);
+  } else if (!baseUrl.endsWith("/") && !path.startsWith("/")) {
+    baseUrl = `${baseUrl}/`;
+  }
+
+  return `${baseUrl}${path}`;
+};
 
 export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState({
-    platformTitle: cached?.platformTitle || "Nydaqstock",
-    logoLight: cached?.logoLight || defaults.logoLight,
-    logoDark: cached?.logoDark || defaults.logoDark,
-    logoSize: cached?.logoSize || 100,
-    logoSizeUnit: cached?.logoSizeUnit || "px",
-    apiKeys: { resend: "", polygon: "", openRouter: "" },
-    smtp: { host: "", port: 465, user: "", pass: "", from: "" },
+    platformTitle: "Inversión de mercados",
+    logoLight: null,
+    logoDark: null,
+    apiKeys: { resend: "", polygon: "", openRouter: "" }
   });
-  const [loading, setLoading] = useState(!cached);
+  const [loading, setLoading] = useState(true);
 
+  // 1. Cargar ajustes al iniciar
   useEffect(() => {
-    fetchBranding();
+    fetchSettings();
   }, []);
 
+  // 2. Actualizar el <title> del navegador dinámicamente
   useEffect(() => {
     if (settings.platformTitle) {
       document.title = settings.platformTitle;
     }
-    const favicon = document.querySelector("link[rel='icon']");
-    if (favicon && settings.logoLight) {
-      favicon.setAttribute("href", settings.logoLight);
-    }
-  }, [settings.platformTitle, settings.logoLight]);
-
-  const applyBranding = (data) => {
-    const logoLight = data.logoLight ? fixAssetUrl(data.logoLight) : defaults.logoLight;
-    const logoDark = data.logoDark ? fixAssetUrl(data.logoDark) : defaults.logoDark;
-    const platformTitle = data.platformTitle || "Nydaqstock";
-    const logoSize = Number(data.logoSize) || 100;
-    const logoSizeUnit = data.logoSizeUnit === "%" ? "%" : "px";
-    writeBrandingCache({ platformTitle, logoLight, logoDark, logoSize, logoSizeUnit });
-    setSettings((prev) => ({
-      ...prev,
-      platformTitle,
-      logoLight,
-      logoDark,
-      logoSize,
-      logoSizeUnit,
-    }));
-  };
-
-  const fetchBranding = async () => {
-    try {
-      const res = await SettingsService.getBranding();
-      if (res.ok && res.data) applyBranding(res.data);
-    } catch (error) {
-      console.error("Error al cargar branding:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [settings.platformTitle]);
 
   const fetchSettings = async () => {
     try {
       const res = await SettingsService.getSettings();
       if (res.ok && res.data) {
-        applyBranding(res.data);
-        setSettings((prev) => ({
-          ...prev,
-          platformTitle: res.data.platformTitle || prev.platformTitle,
-          logoLight: res.data.logoLight ? fixAssetUrl(res.data.logoLight) : prev.logoLight,
-          logoDark: res.data.logoDark ? fixAssetUrl(res.data.logoDark) : prev.logoDark,
-          logoSize: Number(res.data.logoSize) || prev.logoSize || 100,
-          logoSizeUnit: res.data.logoSizeUnit === "%" ? "%" : "px",
+        setSettings({
+          platformTitle: res.data.platformTitle || "Inversión de mercados",
+          logoLight: res.data.logoLight ? fixUrl(res.data.logoLight) : null,
+          logoDark: res.data.logoDark ? fixUrl(res.data.logoDark) : null,
           apiKeys: {
             resend: res.data.resendApiKey || "",
             polygon: res.data.polygonApiKey || "",
-            openRouter: res.data.openRouterApiKey || "",
-          },
-          smtp: {
-            host: res.data.smtpHost || "",
-            port: res.data.smtpPort || 465,
-            user: res.data.smtpUser || "",
-            pass: res.data.smtpPass || "",
-            from: res.data.emailFrom || "",
-          },
-        }));
+            openRouter: res.data.openRouterApiKey || ""
+          }
+        });
       }
     } catch (error) {
       console.error("Error al cargar configuración global:", error);
@@ -107,18 +77,10 @@ export const SettingsProvider = ({ children }) => {
     }
   };
 
-  const value = useMemo(
-    () => ({
-      settings,
-      loading,
-      refreshSettings: fetchSettings,
-      refreshBranding: fetchBranding,
-    }),
-    [settings, loading]
-  );
+  const refreshSettings = () => fetchSettings();
 
   return (
-    <SettingsContext.Provider value={value}>
+    <SettingsContext.Provider value={{ settings, loading, refreshSettings }}>
       {children}
     </SettingsContext.Provider>
   );

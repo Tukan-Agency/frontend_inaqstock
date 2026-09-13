@@ -72,7 +72,7 @@ export default function Analitica() {
       selectedYearIndex: Number(selectedYearIndex || 1),
     });
 
-  const primaryColor = "#111727";
+  const primaryColor = "#00689b";
 
   const chartOptions = useMemo(
     () => ({
@@ -133,7 +133,7 @@ export default function Analitica() {
 
         <div className="pt-5 grid grid-cols-1 md:grid-cols-[1fr_3fr] gap-4">
           {/* Dashboard */}
-          <Card className="order-1 md:order-2 border border-solid border-[#11172766]">
+          <Card className="order-1 md:order-2 border border-solid border-[#00689b9e]">
             <CardBody className="p-4 md:p-6">
               <div className="space-y-6">
                 {/* Filtros */}
@@ -311,7 +311,7 @@ export default function Analitica() {
           {/* Mercados */}
           <div className="order-2 md:order-1 flex flex-col gap-4">
             <MarketList onSelect={(symbol) => setSelectedSymbol(symbol)} />
-            <Card className="border border-solid border-[#11172766]">
+            <Card className="border border-solid border-[#00689b9e]">
               <CardBody>
                 <MarketWidget selectedSymbol={selectedSymbol} />
               </CardBody>

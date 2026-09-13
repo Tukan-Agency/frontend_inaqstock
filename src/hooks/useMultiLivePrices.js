@@ -1,126 +1,120 @@
 import { useEffect, useMemo, useState } from "react";
-import { getMarketOverview } from "../components/services/marketCatalog.js";
 
 /**
- * Precios en vivo para varios símbolos:
- * 1) Bootstrap REST (overview) → primera cotización rápida
- * 2) WebSocket por símbolo → actualizaciones
+ * Precios live para MUCHOS símbolos (stocks y crypto) vía backend.
+ * Estrategia: polling /api/prices/last cada 2s.
+ *
+ * Este archivo incluye LOGS para depurar por qué no llegan precios en el navegador
+ * (401, HTML, CORS, VITE_API_URL incorrecta, etc).
  */
 export function useMultiLivePrices(symbols = []) {
-  const normalizedSymbols = useMemo(
-    () =>
-      [
-        ...new Set(
-          symbols
-            .map((symbol) => String(symbol || "").trim().toUpperCase())
-            .filter(Boolean)
-        ),
-      ].sort(),
-    [symbols]
-  );
-  const symbolsKey = normalizedSymbols.join("|");
   const [prices, setPrices] = useState({});
-  const [status, setStatus] = useState({});
+
+  const uniqSymbols = useMemo(() => {
+    const arr = Array.isArray(symbols) ? symbols : [];
+    return Array.from(
+      new Set(arr.map((s) => String(s || "").trim().toUpperCase()).filter(Boolean))
+    );
+  }, [symbols]);
 
   useEffect(() => {
-    const base = import.meta.env.VITE_API_URL || "";
-    const activeSymbols = symbolsKey ? symbolsKey.split("|") : [];
-    if (!base || !activeSymbols.length) {
+    const base = import.meta.env.VITE_API_URL;
+
+    if (!base) {
+      console.warn("[useMultiLivePrices] Missing VITE_API_URL");
       setPrices({});
-      setStatus({});
-      return undefined;
+      return;
     }
 
-    let cancelled = false;
-    const sockets = new Map();
-    const retryTimers = new Map();
-    const attempts = new Map();
+    if (!uniqSymbols.length) {
+      setPrices({});
+      return;
+    }
 
-    setStatus((current) => {
-      const next = { ...current };
-      activeSymbols.forEach((symbol) => {
-        if (!next[symbol] || next[symbol] === "idle") next[symbol] = "connecting";
-      });
-      return next;
-    });
+    let alive = true;
+    let tickN = 0;
 
-    void getMarketOverview(activeSymbols)
-      .then((items) => {
-        if (cancelled || !Array.isArray(items)) return;
-        setPrices((current) => {
-          const next = { ...current };
-          let changed = false;
-          items.forEach((item) => {
-            const symbol = String(item.symbol || "").toUpperCase();
-            const price = Number(item.price);
-            if (!symbol || !Number.isFinite(price) || price <= 0) return;
-            if (next[symbol] == null) {
-              next[symbol] = price;
-              changed = true;
+    const tick = async () => {
+      tickN += 1;
+
+      // LOG: primera vez (para no spamear tanto)
+      if (tickN === 1) {
+        console.log("[useMultiLivePrices] start", { base, symbols: uniqSymbols });
+      }
+
+      await Promise.all(
+        uniqSymbols.map(async (sym) => {
+          const url = `${base}/api/prices/last?symbol=${encodeURIComponent(sym)}`;
+
+          try {
+            const r = await fetch(url, { credentials: "include" });
+            const ct = r.headers.get("content-type") || "";
+
+            if (!r.ok) {
+              const txt = await r.text().catch(() => "");
+              console.error("[useMultiLivePrices] HTTP error", {
+                sym,
+                url,
+                status: r.status,
+                contentType: ct,
+                body: txt.slice(0, 400),
+              });
+              return;
             }
-          });
-          return changed ? next : current;
-        });
-        setStatus((current) => {
-          const next = { ...current };
-          items.forEach((item) => {
-            const symbol = String(item.symbol || "").toUpperCase();
-            if (symbol && next[symbol] !== "live") next[symbol] = "seeded";
-          });
-          return next;
-        });
-      })
-      .catch(() => {});
 
-    const connect = (symbol) => {
-      if (cancelled) return;
-      const socket = new WebSocket(
-        `${base.replace(/^http/, "ws")}/ws/prices?symbol=${encodeURIComponent(symbol)}`
-      );
-      sockets.set(symbol, socket);
+            // Si el backend responde HTML/login, acá lo vas a ver
+            if (!ct.includes("application/json")) {
+              const txt = await r.text().catch(() => "");
+              console.error("[useMultiLivePrices] Non-JSON response", {
+                sym,
+                url,
+                status: r.status,
+                contentType: ct,
+                body: txt.slice(0, 400),
+              });
+              return;
+            }
 
-      socket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          const price = Number(message.price);
-          if (message.type === "price" && Number.isFinite(price) && price > 0) {
-            attempts.set(symbol, 0);
-            setPrices((current) =>
-              current[symbol] === price ? current : { ...current, [symbol]: price }
-            );
-            setStatus((current) =>
-              current[symbol] === "live" ? current : { ...current, [symbol]: "live" }
-            );
+            const j = await r.json().catch(() => null);
+            const p = Number(j?.data?.price);
+
+            if (!Number.isFinite(p) || p <= 0) {
+              // Log suave para entender por qué no setea precio
+              if (tickN <= 3) {
+                console.warn("[useMultiLivePrices] Invalid price payload", { sym, url, payload: j });
+              }
+              return;
+            }
+
+            if (!alive) return;
+
+            setPrices((prev) => {
+              if (prev[sym] === p) return prev;
+              return { ...prev, [sym]: p };
+            });
+
+            if (tickN <= 3) {
+              console.log("[useMultiLivePrices] price_ok", { sym, price: p });
+            }
+          } catch (e) {
+            console.error("[useMultiLivePrices] fetch exception", {
+              sym,
+              url,
+              err: e?.message || String(e),
+            });
           }
-        } catch {
-          // ignore
-        }
-      };
-
-      socket.onerror = () => socket.close();
-      socket.onclose = () => {
-        if (cancelled) return;
-        const attempt = attempts.get(symbol) || 0;
-        attempts.set(symbol, attempt + 1);
-        setStatus((current) => ({ ...current, [symbol]: "reconnecting" }));
-        retryTimers.set(
-          symbol,
-          window.setTimeout(() => connect(symbol), Math.min(15000, 1000 * 2 ** attempt))
-        );
-      };
+        })
+      );
     };
 
-    activeSymbols.forEach(connect);
+    tick();
+    const id = setInterval(tick, 2000);
 
     return () => {
-      cancelled = true;
-      retryTimers.forEach((timer) => window.clearTimeout(timer));
-      sockets.forEach((socket) => {
-        socket.onclose = null;
-        socket.close(1000, "positions-change");
-      });
+      alive = false;
+      clearInterval(id);
     };
-  }, [symbolsKey]);
+  }, [uniqSymbols]);
 
-  return { prices, status };
+  return prices;
 }

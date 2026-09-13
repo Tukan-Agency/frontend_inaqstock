@@ -8,16 +8,17 @@ import {
   NavbarContent,
   Skeleton,
 } from "@heroui/react";
+import { Select, SelectItem } from "@heroui/react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useEffect, useMemo, useState, useCallback } from "react";
 
 import Logo from "./objetos/Logo";
+import { useAccountMode } from "../context/AccountModeContext.jsx";
 import { useSession } from "../hooks/use-session.jsx";
 import { useSessionGuard } from "../hooks/useSessionGuard.jsx";
 import UserDropdown from "./objetos/UserDropdown";
 import SaldosDropdown from "./objetos/SaldosDropdown";
-import AccountModeSelector from "./AccountModeSelector.jsx";
 
 import useDarkMode from "use-dark-mode";
 import axios from "axios";
@@ -50,6 +51,7 @@ export default function Nav() {
   const location = useLocation();
   const currentSlug = location.pathname.split("/")[1] || "operar";
   const navigate = useNavigate();
+  const { mode, setMode } = useAccountMode();
   const { session, clearSession } = useSession();
 
   const [cuentaVerificada, setCuentaVerificada] = useState(null);
@@ -178,13 +180,23 @@ export default function Nav() {
             to="/operar"
             onClick={() => setMenuOpen(false)}
           >
-            <Logo />
+            <Logo size={100} />
           </Link>
         </NavbarBrand>
 
         {/* Centro (desktop): selector + tabs */}
         <NavbarContent className="hidden md:flex gap-x-10">
-          <AccountModeSelector />
+          <Select
+            size="sm"
+            color={mode === "demo" ? "success" : "secondary"}
+            selectedKeys={[mode]}
+            onChange={(e) => setMode(e.target.value)}
+            className="w-[110px]"
+            variant="flat"
+          >
+            <SelectItem key="real">Real</SelectItem>
+            <SelectItem key="demo">Demo</SelectItem>
+          </Select>
 
           <Tabs
             selectedKey={currentSlug}
@@ -201,7 +213,17 @@ export default function Nav() {
 
         {/* Centro (móvil): selector chico */}
         <NavbarContent className="flex md:hidden">
-          <AccountModeSelector compact />
+          <Select
+            size="sm"
+            color={mode === "demo" ? "success" : "secondary"}
+            selectedKeys={[mode]}
+            onChange={(e) => setMode(e.target.value)}
+            className="w-[100px]"
+            variant="flat"
+          >
+            <SelectItem key="real">Real</SelectItem>
+            <SelectItem key="demo">Demo</SelectItem>
+          </Select>
         </NavbarContent>
 
         {/* Derecha: desktop */}

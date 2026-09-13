@@ -18,7 +18,7 @@ export default function ExplorarSidebar() {
               to={it.to}
               label={it.label}
               icon={it.icon}
-              activeColor="#111727"
+              activeColor="#00689B"
             />
           </li>
         ))}

@@ -1,20 +1,22 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Tabs, Tab } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { TradingService } from "../services/tradingService.js";
 import OpenPositionsTable from "./OpenPositionsTable.jsx";
 import ClosedPositionsTable from "./ClosedPositionsTable.jsx";
 import { useAccountMode } from "../../context/AccountModeContext";
+import { useCryptoPrices } from "../../hooks/useCryptoPrices.js";
 import { useMultiLivePrices } from "../../hooks/useMultiLivePrices";
-import { calculatePositionPnl } from "../../utils/positionPnl.js";
 
 export default function TradingTabs() {
   const { mode } = useAccountMode();
   const [selectedTab, setSelectedTab] = useState("open");
+
   const [openPositions, setOpenPositions] = useState([]);
   const [closedPositions, setClosedPositions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 1. CARGAR POSICIONES
   const loadPositions = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -35,6 +37,7 @@ export default function TradingTabs() {
     loadPositions();
   }, [loadPositions]);
 
+  // 2. ACTUALIZACIÓN EN TIEMPO REAL
   useEffect(() => {
     const handleTrade = (event) => {
       const newPosition = event.detail;
@@ -42,9 +45,8 @@ export default function TradingTabs() {
         setOpenPositions((prev) => [
           {
             ...newPosition,
-            profit: null,
-            profitPercentage: null,
-            currentPrice: null,
+            profit: 0,
+            profitPercentage: 0,
             pnlReady: false,
             profitLoading: true,
             openTime: newPosition.createdAt || new Date().toISOString(),
@@ -59,52 +61,101 @@ export default function TradingTabs() {
     return () => window.removeEventListener("trade-executed", handleTrade);
   }, [mode]);
 
-  const positionSymbols = useMemo(
+  // 3. PRECIOS LIVE
+  // Crypto (como ya lo tenías)
+  const cryptoSymbols = useMemo(
     () =>
       Array.from(
         new Set(
-          openPositions.map((p) => String(p.symbol || "").trim().toUpperCase()).filter(Boolean)
+          openPositions
+            .filter((p) => String(p.symbol).startsWith("X:"))
+            .map((p) => String(p.symbol).trim().toUpperCase())
         )
       ),
     [openPositions]
   );
+  const cryptoPrices = useCryptoPrices(cryptoSymbols);
 
-  const { prices: positionPrices, status: priceStatus } = useMultiLivePrices(positionSymbols);
-
-  // Una vez que crypto tuvo tick live, no vuelve a skeleton por reconexión.
-  const liveLockedRef = useRef(new Set());
-  useEffect(() => {
-    Object.entries(priceStatus).forEach(([symbol, status]) => {
-      if (status === "live") liveLockedRef.current.add(symbol);
-    });
-  }, [priceStatus]);
-
-  // Derivado: no reescribe estado en cada tick.
-  const liveOpenPositions = useMemo(
+  // Stocks (NUEVO): también pedimos live price para NO-crypto
+  const stockSymbols = useMemo(
     () =>
-      openPositions.map((position) => {
-        const symbol = String(position.symbol || "").trim().toUpperCase();
-        const feedStatus = liveLockedRef.current.has(symbol)
-          ? "live"
-          : priceStatus[symbol] || null;
-        return calculatePositionPnl(position, positionPrices[symbol], {
-          status: feedStatus,
-        });
-      }),
-    [openPositions, positionPrices, priceStatus]
+      Array.from(
+        new Set(
+          openPositions
+            .filter((p) => !String(p.symbol).startsWith("X:"))
+            .map((p) => String(p.symbol).trim().toUpperCase())
+        )
+      ),
+    [openPositions]
   );
+  const stockPrices = useMultiLivePrices(stockSymbols);
 
+  const recalc = (positions) =>
+    positions.map((p) => {
+      const sym = String(p.symbol).trim().toUpperCase();
+      const isCrypto = sym.startsWith("X:");
+
+      const livePrice = isCrypto ? cryptoPrices[sym] : stockPrices[sym];
+
+      const currentPriceNum =
+        typeof livePrice === "number" && !Number.isNaN(livePrice)
+          ? livePrice
+          : Number(p.currentPrice) || Number(p.openPrice) || 0;
+
+      const hasLive = typeof livePrice === "number" && livePrice > 0;
+      const open = Number(p.openPrice);
+      const qty = Number(p.volume) || 0;
+      const commission = Number(p.commission) || 0;
+      const swap = Number(p.swap) || 0;
+
+      let profit = p.profit;
+      let profitPercentage = p.profitPercentage;
+
+      if (hasLive && open && qty) {
+        const diff =
+          p.type === "Compra"
+            ? currentPriceNum - open
+            : open - currentPriceNum;
+
+        profit = (diff * qty - commission - swap).toFixed(2);
+        profitPercentage = ((diff / open) * 100).toFixed(2);
+      }
+
+      const pnlReady = Boolean(p.pnlReady) || hasLive;
+
+      return {
+        ...p,
+        currentPrice: currentPriceNum,
+        profit,
+        profitPercentage,
+        pnlReady,
+        profitLoading: !pnlReady,
+      };
+    });
+
+  // Recalcular cuando cambie cualquier feed de precios
+  useEffect(() => {
+    if (!openPositions.length) return;
+    setOpenPositions((prev) => recalc(prev));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cryptoPrices, stockPrices]);
+
+  // 4. CERRAR POSICIÓN (Optimista + Mapeo correcto)
   const handleClosePosition = async (position) => {
     try {
       const positionToClose = openPositions.find((p) => p._id === position._id);
+
       setOpenPositions((prev) => prev.filter((p) => p._id !== position._id));
 
       const closeTimeISO = new Date().toISOString();
       const closePriceVal = position.currentPrice || position.openPrice;
-      const response = await TradingService.closePosition(position._id, {
+
+      const closingData = {
         closePrice: closePriceVal,
         closeTime: closeTimeISO,
-      });
+      };
+
+      const response = await TradingService.closePosition(position._id, closingData);
 
       const finalClosedPosition = {
         ...positionToClose,
@@ -114,13 +165,16 @@ export default function TradingTabs() {
         openTime:
           response.openTime ||
           response.createdAt ||
-          positionToClose?.openTime ||
-          positionToClose?.createdAt,
-        profit: response.profit !== undefined ? response.profit : position.profit,
+          positionToClose.openTime ||
+          positionToClose.createdAt,
+        profit:
+          response.profit !== undefined
+            ? response.profit
+            : positionToClose.profit,
         profitPercentage:
           response.profitPercentage !== undefined
             ? response.profitPercentage
-            : position.profitPercentage,
+            : positionToClose.profitPercentage,
       };
 
       setClosedPositions((prev) => [finalClosedPosition, ...prev]);
@@ -159,7 +213,7 @@ export default function TradingTabs() {
             {tab.id === "open" && (
               <div className="py-4">
                 <OpenPositionsTable
-                  positions={liveOpenPositions}
+                  positions={openPositions}
                   onClosePosition={handleClosePosition}
                   isLoading={isLoading}
                 />
@@ -168,22 +222,25 @@ export default function TradingTabs() {
 
             {tab.id === "closed" && (
               <div className="py-4">
-                <ClosedPositionsTable positions={closedPositions} isLoading={isLoading} />
+                <ClosedPositionsTable
+                  positions={closedPositions}
+                  isLoading={isLoading}
+                />
               </div>
             )}
 
             {tab.id === "pending" && (
               <div className="py-4">
-                <div className="m-auto flex min-h-[200px] flex-col items-center justify-center">
+                <div className="flex items-center justify-center flex-col min-h-[200px] m-auto">
                   <div
                     style={{
-                      background: "#18A77724",
+                      background: "#00689824",
                       padding: "26px",
                       borderRadius: "73px",
                       marginBottom: "13px",
                     }}
                   >
-                    <Icon color="#18A777" icon={tab.icon} width={80} />
+                    <Icon color="#3285ab" icon={tab.icon} width={80} />
                   </div>
                   <h2>No tienes órdenes pendientes.</h2>
                   <p className="text-default-500">
@@ -195,16 +252,16 @@ export default function TradingTabs() {
 
             {tab.id === "finances" && (
               <div className="py-4">
-                <div className="m-auto flex min-h-[200px] flex-col items-center justify-center">
+                <div className="flex items-center justify-center flex-col min-h-[200px] m-auto">
                   <div
                     style={{
-                      background: "#18A77724",
+                      background: "#00689824",
                       padding: "26px",
                       borderRadius: "73px",
                       marginBottom: "13px",
                     }}
                   >
-                    <Icon color="#18A777" icon={tab.icon} width={80} />
+                    <Icon color="#3285ab" icon={tab.icon} width={80} />
                   </div>
                   <h2>Información financiera no disponible.</h2>
                 </div>

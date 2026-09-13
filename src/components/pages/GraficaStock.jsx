@@ -54,7 +54,7 @@ export default function GraficaStock() {
         
 
           {/* Columna derecha */}
-          <Card style={{height: "100vh"} } className="border border-solid border-[#11172766]">
+          <Card style={{height: "100vh"} } className="border border-solid border-[#00689b9e]">
             <CardBody className="p-3 md:p-6">
               <Skeleton
                 isLoaded={iframeLoaded}

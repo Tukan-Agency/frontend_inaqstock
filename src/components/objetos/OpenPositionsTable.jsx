@@ -13,7 +13,6 @@ import {
   Skeleton,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { formatMarketPrice } from "../../utils/marketPrice.js";
 
 function computeSign(profitStr, pctStr) {
   const pct = Number(pctStr);
@@ -25,30 +24,35 @@ function computeSign(profitStr, pctStr) {
 }
 
 function formatWithSign(value, sign) {
-  const raw = String(value ?? "");
   const num = Number(value);
-  if (!Number.isFinite(num)) return "—";
-  // Conserva decimales ya calculados (p. ej. 0.0001).
-  const abs = raw.replace(/^[+-]/, "") || Math.abs(num).toFixed(2);
+  const abs = Math.abs(Number.isFinite(num) ? num : 0).toFixed(2);
   if (sign > 0) return `+${abs}`;
   if (sign < 0) return `-${abs}`;
-  return abs.startsWith("-") ? abs.slice(1) : abs;
+  return abs;
 }
 
+/**
+ * IMPORTANTE:
+ * Antes se ocultaba el PnL (Skeleton) cuando:
+ *  - profitLoading=true o pnlReady=false
+ *  - o cuando open==current y recent<20s
+ *
+ * Pero para STOCKS es normal que open==current (precio puede no moverse rápido),
+ * y aun así queremos mostrar 0.00 en vez de skeleton.
+ *
+ * Ahora: solo mostramos Skeleton si explícitamente profitLoading===true
+ * o pnlReady===false. (Sin heurística open==current).
+ */
 function isPnLPending(position) {
   if (position?.pnlReady === false || position?.profitLoading === true) return true;
-  if (position?.profit === undefined || position?.profit === null) return true;
-  if (position?.profitPercentage === undefined || position?.profitPercentage === null) return true;
-  return false;
-}
 
-function ProfitSkeleton() {
-  return (
-    <div className="flex items-center gap-2" aria-label="Calculando beneficio">
-      <Skeleton className="h-4 w-14 rounded-md" />
-      <Skeleton className="h-3 w-10 rounded-md" />
-    </div>
-  );
+  // Si no existe profit aún (null/undefined), también pending
+  if (position?.profit === undefined || position?.profit === null) return true;
+
+  // Si no existe profitPercentage aún, también pending
+  if (position?.profitPercentage === undefined || position?.profitPercentage === null) return true;
+
+  return false;
 }
 
 export default function OpenPositionsTable({ positions = [], onClosePosition, isLoading }) {
@@ -75,7 +79,8 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
 
   const pageItems = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
-    return positions.slice(start, start + rowsPerPage);
+    const end = start + rowsPerPage;
+    return positions.slice(start, end);
   }, [positions, page]);
 
   const renderCell = (position, columnKey) => {
@@ -85,7 +90,7 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
           <div className="flex items-center gap-2">
             <span>{position.symbol}</span>
             <span
-              className={`ml-2 rounded-full px-2 py-1 text-xs ${
+              className={`ml-2 px-2 py-1 text-xs rounded-full ${
                 position.type === "Compra"
                   ? "bg-success-100 text-success-600"
                   : "bg-danger-100 text-danger-600"
@@ -96,50 +101,38 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
           </div>
         );
 
-      case "openPrice":
-        return formatMarketPrice(position.openPrice, position.symbol);
-
-      case "currentPrice":
-        if (position.currentPrice == null || !Number.isFinite(Number(position.currentPrice))) {
-          return <Skeleton className="h-4 w-16 rounded-md" />;
-        }
-        return formatMarketPrice(position.currentPrice, position.symbol);
-
       case "profit": {
-        if (isPnLPending(position)) return <ProfitSkeleton />;
+        // Mostrar Skeleton mientras el PnL aún no está listo
+        if (isPnLPending(position)) {
+          return (
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-14 rounded-md" />
+              <Skeleton className="h-3 w-10 rounded-md" />
+            </div>
+          );
+        }
 
         const profitSafe = position.profit ?? "0.00";
         const pctSafe = position.profitPercentage ?? "0.00";
+
         const sign = computeSign(profitSafe, pctSafe);
         const colorClass =
           sign > 0 ? "text-success-600" : sign < 0 ? "text-danger-600" : "text-default-600";
+
         const profitDisplay = formatWithSign(profitSafe, sign);
+
         const pctNum = Number(pctSafe);
-        const pctSign = Number.isFinite(pctNum) && pctNum !== 0 ? (pctNum > 0 ? 1 : -1) : sign;
-        const pctAbs = String(pctSafe).replace(/^[+-]/, "");
+        const pctSign =
+          Number.isFinite(pctNum) && pctNum !== 0 ? (pctNum > 0 ? 1 : -1) : sign;
         const pctDisplay = Number.isFinite(pctNum)
-          ? `${pctSign > 0 ? "+" : pctSign < 0 ? "-" : ""}${pctAbs}%`
+          ? `${pctSign > 0 ? "+" : pctSign < 0 ? "-" : ""}${Math.abs(pctNum).toFixed(2)}%`
           : null;
 
-        const isStock =
-          position.symbol && !String(position.symbol).includes(":");
-        const flat = sign === 0;
-
         return (
-          <div className="flex flex-col items-start gap-1">
-            <span className={colorClass}>
-              {profitDisplay}
-              {pctDisplay && <span className="ml-1 text-xs">({pctDisplay})</span>}
-            </span>
-            {isStock && flat && (
-              <Tooltip content="Las acciones no tienen tick a tick con el plan actual. Se usa el último trade/cierre de Polygon y se refresca cada ~15s en horario de mercado.">
-                <span className="inline-flex cursor-help items-center gap-1 rounded-full bg-default-100 px-2 py-0.5 text-[10px] font-medium text-default-500">
-                  <Icon icon="material-symbols:info-outline" width={12} />
-                  Último precio
-                </span>
-              </Tooltip>
-            )}
-          </div>
+          <span className={colorClass}>
+            {profitDisplay}
+            {pctDisplay && <span className="text-xs ml-1">({pctDisplay})</span>}
+          </span>
         );
       }
 
@@ -167,7 +160,7 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
         return position.openTime ? new Date(position.openTime).toLocaleString() : "-";
 
       case "tp_sl":
-        return `${position.tp ?? "--"} / ${position.sl ?? "--"}`;
+        return `${position.tp}/${position.sl}`;
 
       default:
         return position[columnKey];
@@ -176,7 +169,7 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center">
+      <div className="flex items-center justify-center min-h-[200px]">
         <Spinner size="lg" />
       </div>
     );
@@ -184,16 +177,16 @@ export default function OpenPositionsTable({ positions = [], onClosePosition, is
 
   if (positions.length === 0) {
     return (
-      <div className="m-auto flex min-h-[200px] flex-col items-center justify-center">
+      <div className="flex items-center justify-center flex-col min-h-[200px] m-auto">
         <div
           style={{
-            background: "#18A77724",
+            background: "#00689824",
             padding: "26px",
             borderRadius: "73px",
             marginBottom: "13px",
           }}
         >
-          <Icon color="#18A777" icon="famicons:book" width={80} />
+          <Icon color="#3285ab" icon="famicons:book" width={80} />
         </div>
         <h2>No tienes posiciones abiertas.</h2>
         <p className="text-default-500">Comienza a operar y aquí verás tus posiciones abiertas.</p>

@@ -24,7 +24,6 @@ import {
 } from "../../../services/orders.service.js";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { summarizeFinalizedOrders } from "../../../../utils/orderFinance.js";
 
 // Subcomponentes
 import OrdersTable from "./panelusersordessrc/OrdersTable.jsx";
@@ -208,7 +207,14 @@ export default function PanelUserOrders() {
 
   // Balance: como tu Angular, solo capital “real” + valores de operación
   const currentBalance = useMemo(() => {
-    return summarizeFinalizedOrders(ordersLike).balance;
+    let balance = 0;
+    ordersLike.forEach((order) => {
+      if (order.isCapital) {
+        balance += sumActionsCapital(order.operationActions);
+      }
+      balance += Number(order.operationValue || 0);
+    });
+    return balance;
   }, [ordersLike]);
 
   const roiData = useMemo(() => {
@@ -321,7 +327,7 @@ export default function PanelUserOrders() {
     setChartData({ labels, totalValues });
   }, [selectedPeriod, selectedMonth, selectedTrimestre, selectedSemestre, selectedYear, ordersLike]);
 
-  const primaryColor = "#111727";
+  const primaryColor = "#00689b";
   const chartOptions = {
     chart: { type: "area", height: 400, toolbar: { show: false }, background: "transparent", zoom: { enabled: false } },
     dataLabels: {

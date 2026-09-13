@@ -31,7 +31,7 @@ export default function ForgotPassword() {
     <div className="min-h-screen flex items-center justify-center ">
       <Card className="w-full max-w-md p-4">
         <CardHeader className="flex flex-col gap-3 items-center pb-0">
-          <Logo />
+          <Logo  height={120} width={120} />
           
           <h1 className="text-xl font-bold">Recuperar Contraseña</h1>
           <p className="text-sm text-default-500 text-center">

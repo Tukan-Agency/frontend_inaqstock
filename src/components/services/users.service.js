@@ -71,7 +71,6 @@ export async function listAllUsers() {
     whatsapp: String(u.whatsapp ?? ""),
     birthday: u.birthday,
     company: u.company,
-    role: u.role,
   }));
 }
 
@@ -101,22 +100,4 @@ export async function updateUserAdmin(id, payload) {
 
 export async function deleteUserAdmin(id) {
   return jsonFetch(url(`/api/users/admin/${id}`), { method: "DELETE" });
-}
-
-export async function impersonateUser(id) {
-  return jsonFetch(url(`/api/auth/impersonate/${id}`), { method: "POST" });
-}
-
-export async function createUserAdmin(payload) {
-  return jsonFetch(url("/api/users/admin"), {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function checkRegistrationEmail(email) {
-  return jsonFetch(url("/api/auth/check-email"), {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  });
 }

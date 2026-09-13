@@ -96,7 +96,7 @@ export default function ResetPassword() {
       <Card className="max-w-md w-full shadow-xl">
         <CardHeader className="flex flex-col gap-3 pb-0 pt-6 px-6">
           <div className="mx-auto mb-2">
-            <Logo />
+            <Logo size={50} />
           </div>
           <h1 className="text-2xl font-bold text-center">Nueva Contraseña</h1>
           <p className="text-sm text-gray-500 text-center">

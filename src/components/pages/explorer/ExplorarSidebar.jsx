@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { Button } from "@heroui/button";
 import { Icon } from "@iconify/react";
 import { useNavigate, useResolvedPath, useLocation } from "react-router-dom";
@@ -17,6 +16,7 @@ function SidebarNavItem({
   to,
   label,
   icon,
+  activeColor = "#00689B",
   end = true,
 }) {
   const navigate = useNavigate();
@@ -48,9 +48,9 @@ function SidebarNavItem({
         isActive
           ? [
               "shadow-sm",
-              "text-[#111727] dark:text-[#18A777]",
-              "bg-[#111727]/10 dark:bg-[#18A777]/15",
-              "border-[#111727]/20 dark:border-[#18A777]/30",
+              "text-[#00689B]",
+              "bg-[rgba(0,104,155,0.10)] dark:bg-[rgba(0,104,155,0.20)]",
+              "border-[rgba(0,104,155,0.20)] dark:border-[rgba(0,104,155,0.30)]",
             ].join(" ")
           : [
               "bg-transparent border-transparent",
@@ -62,9 +62,10 @@ function SidebarNavItem({
         <Icon
           icon={icon}
           width={22}
-          className={isActive ? "text-[#111727] dark:text-[#18A777]" : "text-gray-400"}
+          color={isActive ? activeColor : "#9CA3AF"}
         />
       }
+      style={isActive ? { color: activeColor } : undefined}
     >
       {label}
     </Button>
@@ -81,6 +82,7 @@ export default function ExplorarSidebar() {
               to={it.to}
               label={it.label}
               icon={it.icon}
+              activeColor="#00689B"
             />
           </li>
         ))}

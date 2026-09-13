@@ -43,7 +43,7 @@ export default function FinishModal({
             <Button variant="flat" onPress={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button color="primary" className="bg-[#111727] text-white" onPress={onSave}>
+            <Button color="primary" className="bg-[#00689B]" onPress={onSave}>
               Guardar
             </Button>
           </ModalFooter>

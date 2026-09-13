@@ -1,6 +1,7 @@
 import { useSession } from "../hooks/use-session";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
+import useDarkMode from "use-dark-mode";
 import { Button, Input, Link, addToast } from "@heroui/react";
 import { useNavigate, Link as NavLink } from "react-router-dom";
 import Logo from "../components/objetos/Logo";
@@ -16,11 +17,19 @@ export default function LoginForm({
 }) {
   const { session } = useSession();
   const navigate = useNavigate();
+  const darkmodevalue = useDarkMode().value;
+  const [logo, setLogo] = useState(null);
+
   useEffect(() => {
     if (session.status === "authenticated") {
       navigate("/operar", { replace: true });
     }
   }, [session.status, navigate]);
+
+  useEffect(() => {
+    const logos = darkmodevalue ? "/nasdaq_logo_dark_v2.png" : "/nasdaq_logo_light_v2.png";
+    setLogo(logos);
+  }, [darkmodevalue]);
 
   useEffect(() => {
     if (error) {
@@ -40,7 +49,7 @@ export default function LoginForm({
         <CardHeader className="px-2 sm:px-4 pt-4 pb-6 flex items-center justify-center">
           <div >
             <p  style={{display: "flex", justifyContent: "center"}} className="logobase">
-            <Logo />
+            <Logo  height={120} width={120} />
             </p>
           </div>
         </CardHeader>

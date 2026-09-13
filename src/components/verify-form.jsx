@@ -1,7 +1,6 @@
 import React from "react";
 import { Card, CardBody } from "@heroui/card";
 import { Button, CardHeader, Link, InputOtp } from "@heroui/react";
-import Logo from "./objetos/Logo";
 
 export default function VerifyForm({
   code,
@@ -22,7 +21,7 @@ export default function VerifyForm({
     <div className="flex flex-col items-center justify-center pt-20">
       <Card className="w-[40vw] p-10 mt-5 cursor-pointer">
         <CardHeader className="px-4 pt-2 flex items-center justify-center">
-          <Logo />
+          <img src="/logo.png" width={130} height={150} alt="Logo" />
         </CardHeader>
         <CardBody className="justify-center items-center">
           <form onSubmit={handleSubmit} className="flex flex-col gap-3 items-center">

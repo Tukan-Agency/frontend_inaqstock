@@ -166,7 +166,7 @@ export default function Register() {
     <div style={{ background: "rgb(0 0 0 / 7%)" }} className="text-foreground bg-background h-[110vh]">
       <div className="flex justify-center pt-32 cursor-pointer">
         <a href="/">
-          <Logo />
+          <Logo data={{ height: 220, width: 250 }} />
         </a>
       </div>
       <br />
