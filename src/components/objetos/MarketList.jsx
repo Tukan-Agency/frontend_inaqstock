@@ -62,8 +62,8 @@ export default function MarketList({ onSelect, onInitialLoad }) {
       try {
         setLoading(true);
         const todayKey = getTodayKey();
-        const cacheData = localStorage.getItem("catalog-popular-v5");
-        const cacheDate = localStorage.getItem("catalog-popular-date-v5");
+        const cacheData = localStorage.getItem("catalog-popular-v6");
+        const cacheDate = localStorage.getItem("catalog-popular-date-v6");
 
         if (cacheData && cacheDate === todayKey) {
           const cachedMarkets = JSON.parse(cacheData);
@@ -84,8 +84,8 @@ export default function MarketList({ onSelect, onInitialLoad }) {
           ...prices.get(instrument.symbol),
         }));
         setMarkets(formattedMarkets);
-        localStorage.setItem("catalog-popular-v5", JSON.stringify(formattedMarkets));
-        localStorage.setItem("catalog-popular-date-v5", todayKey);
+        localStorage.setItem("catalog-popular-v6", JSON.stringify(formattedMarkets));
+        localStorage.setItem("catalog-popular-date-v6", todayKey);
         setError(null);
       } catch (err) {
         console.error(err);
@@ -138,7 +138,7 @@ export default function MarketList({ onSelect, onInitialLoad }) {
   const handleSearch = async () => {
     if (!searchText.trim()) {
       // Si está vacío, restaurar el cache
-      const cached = localStorage.getItem("catalog-popular-v5");
+      const cached = localStorage.getItem("catalog-popular-v6");
       if (cached) setMarkets(JSON.parse(cached));
       return;
     }
