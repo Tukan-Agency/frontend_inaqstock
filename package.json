@@ -28,6 +28,7 @@
     "@heroui/select": "^2.4.33",
     "@heroui/theme": "^2.4.15",
     "@heroui/toast": "^2.0.22",
+    "@internationalized/date": "^3.12.4",
     "@nextui-org/input-otp": "^2.1.8",
     "@nextui-org/theme": "^2.4.5",
     "apexcharts": "^5.2.0",
