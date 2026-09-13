@@ -167,7 +167,7 @@ export default function AccountInfo() {
           color="primary"
           variant="solid"
           startContent={<Icon icon="mdi:pencil" width={18} />}
-          className="bg-[#00689B] text-white hover:opacity-90"
+          className="bg-[#111727] text-white hover:bg-[#0b0f1a]"
           onPress={() => setOpenEdit(true)}
           isDisabled={saving}
         >

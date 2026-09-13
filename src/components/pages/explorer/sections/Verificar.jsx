@@ -226,7 +226,7 @@ export default function Verificar() {
     if (state === DOC_STATUS.NONE) {
       return (
         <Button
-          className="bg-[#00689B] text-white"
+          className="bg-[#111727] text-white"
           size="md"
           onPress={() => sendDocument(docId)}
           isDisabled={!hasLocalFile || disabled}
@@ -297,7 +297,7 @@ export default function Verificar() {
         <div
           className={[
             "relative border-2 border-dashed rounded-2xl px-6 py-8 min-h-[110px]",
-            "border-[#7fb1c9] hover:border-[#00689B] transition-colors cursor-pointer",
+            "border-[#7d8290] hover:border-[#111727] transition-colors cursor-pointer",
           ].join(" ")}
           onClick={() => triggerInput(doc.id)}
         >

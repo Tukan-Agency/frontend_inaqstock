@@ -2,12 +2,19 @@
   "name": "client",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "pnpm@10.15.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node --test",
     "start": "vite preview"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "dependencies": {
     "@heroui/input-otp": "^2.1.18",

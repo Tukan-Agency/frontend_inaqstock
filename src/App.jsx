@@ -31,7 +31,9 @@ import SolicitudesVerify from "./components/pages/panel/sections/SolicitudesVeri
 import ForgotPassword from "./components/pages/ForgotPassword.jsx";
 import ResetPassword from "./components/pages/ResetPassword.jsx";
 import Settings from "./components/pages/Settings.jsx";
+import Incidentes from "./components/pages/panel/sections/Incidentes.jsx";
 import Calculadora from "./components/pages/Calculadora.jsx";
+import ForcePasswordChangeModal from "./components/ForcePasswordChangeModal.jsx";
 
 function App() {
 
@@ -102,6 +104,7 @@ function App() {
 
   return (
     <>
+      <ForcePasswordChangeModal />
       <Routes>
 
         <Route path="/" element={<Home />} />
@@ -136,6 +139,7 @@ function App() {
           />
 
           <Route path="ajustes" element={<Settings />} />
+          <Route path="incidentes" element={<Incidentes />} />
 
           <Route
             path="dasboard"

@@ -2,9 +2,33 @@
 <html class="light" lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/logo.png" />
+    <link rel="icon" type="image/png" href="/logo.png" id="app-favicon" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title></title>
+    <title>Nydaqstock</title>
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("platform-branding-v1");
+          if (!raw) return;
+          var data = JSON.parse(raw);
+          if (data && data.platformTitle) document.title = data.platformTitle;
+          var fav = document.getElementById("app-favicon");
+          if (fav && data && data.logoLight) fav.setAttribute("href", data.logoLight);
+          var isDark = localStorage.getItem("darkMode") === "true";
+          var src = isDark
+            ? (data && (data.logoDark || data.logoLight))
+            : (data && (data.logoLight || data.logoDark));
+          if (!src) return;
+          window.__BOOT_LOGO__ = src;
+          var style = document.createElement("style");
+          style.textContent =
+            "img[data-boot-logo],.boot-logo{content:url('" +
+            String(src).replace(/'/g, "\\'") +
+            "')}";
+          document.head.appendChild(style);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

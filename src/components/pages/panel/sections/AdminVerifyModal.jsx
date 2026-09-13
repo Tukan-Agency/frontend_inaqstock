@@ -386,7 +386,7 @@ export default function AdminVerifyModal({ open, onClose, userRow, onUpdated }) 
                                 <div className="flex gap-2">
                                   <Button
                                     color="primary"
-                                    className="bg-[#00689B] text-white"
+                                    className="bg-[#111727] text-white"
                                     onPress={() => doUpload(d.id)}
                                     isDisabled={!docs[d.id]?.newFile || !!busy[d.id]}
                                     isLoading={!!busy[d.id]}
@@ -433,7 +433,7 @@ export default function AdminVerifyModal({ open, onClose, userRow, onUpdated }) 
 
                               {/* Dropzone */}
                               <div
-                                className="relative border-2 border-dashed border-[#7fb1c9] rounded-2xl p-8 text-center cursor-pointer hover:border-[#00689B] transition-colors"
+                                className="relative border-2 border-dashed border-[#7d8290] rounded-2xl p-8 text-center cursor-pointer hover:border-[#111727] transition-colors"
                                 onClick={() => document.getElementById(`admin-edit-input-${d.id}`)?.click()}
                               >
                                 <input

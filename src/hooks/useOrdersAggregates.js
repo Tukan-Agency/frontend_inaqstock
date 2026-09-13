@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { listUserOrders } from "../components/services/orders.service";
 import { useAccountMode } from "../context/AccountModeContext";
+import {
+  cumulative,
+  getFinalizedOrderDelta,
+  getOrderFinancials,
+  summarizeFinalizedOrders,
+} from "../utils/orderFinance.js";
 
 export function useOrdersAggregates({
   clientId,
@@ -59,9 +65,6 @@ export function useOrdersAggregates({
     load();
     return () => { cancelled = true; };
   }, [clientId, mode, baseDelayMs]);
-
-  const sumActionsCapital = (ops = []) =>
-    (ops || []).reduce((acc, a) => acc + Number(a?.benefit || 0) * Number(a?.quantity || 0), 0);
 
   const operationalYears = useMemo(() => {
     const dated = orders
@@ -140,12 +143,13 @@ export function useOrdersAggregates({
       totalValues = weeks.map(({ weekStart, weekEnd }) =>
         activeOrders.reduce((acc, o) => {
           const d = new Date(o.operationDate);
-          if (d >= weekStart && d <= weekEnd && !o.isCapital && !o.isWithdrawl) {
-            return acc + Number(o.operationValue || 0);
+          if (d >= weekStart && d <= weekEnd) {
+            return acc + getFinalizedOrderDelta(o);
           }
           return acc;
         }, 0)
       );
+      totalValues = cumulative(totalValues);
     } else if (selectedPeriod === "T") {
       const map = {
         "1": { labels: ["Enero","Febrero","Marzo"], months: [0,1,2] },
@@ -158,12 +162,13 @@ export function useOrdersAggregates({
       totalValues = conf.months.map((m) =>
         activeOrders.reduce((acc, o) => {
           const d = new Date(o.operationDate);
-          if (d.getFullYear() === selectedYear && d.getMonth() === m && !o.isCapital && !o.isWithdrawl) {
-            return acc + Number(o.operationValue || 0);
+          if (d.getFullYear() === selectedYear && d.getMonth() === m) {
+            return acc + getFinalizedOrderDelta(o);
           }
           return acc;
         }, 0)
       );
+      totalValues = cumulative(totalValues);
     } else if (selectedPeriod === "S") {
       const conf = selectedSemestre === "1"
         ? { labels: ["Enero","Febrero","Marzo","Abril","Mayo","Junio"], months: [0,1,2,3,4,5] }
@@ -172,56 +177,30 @@ export function useOrdersAggregates({
       totalValues = conf.months.map((m) =>
         activeOrders.reduce((acc, o) => {
           const d = new Date(o.operationDate);
-          if (d.getFullYear() === selectedYear && d.getMonth() === m && !o.isCapital && !o.isWithdrawl) {
-            return acc + Number(o.operationValue || 0);
+          if (d.getFullYear() === selectedYear && d.getMonth() === m) {
+            return acc + getFinalizedOrderDelta(o);
           }
           return acc;
         }, 0)
       );
+      totalValues = cumulative(totalValues);
     }
 
     return { labels, totalValues };
   }, [activeOrders, selectedYear, selectedMonth, selectedTrimestre, selectedSemestre, selectedPeriod]);
 
-  const tableRows = useMemo(() => {
-    return activeOrders
-      .slice()
-      .sort((a, b) => new Date(b.operationDate) - new Date(a.operationDate))
-      .map((o, idx) => {
-        const actionsTotal = sumActionsCapital(o.operationActions);
-        const hasActions = actionsTotal !== 0;
-        let capital = 0, retiros = 0, ganancia = 0, perdida = 0;
-
-        if (o.isCapital && !o.isWithdrawl) {
-          capital = hasActions ? actionsTotal : Number(o.operationValue || 0);
-        } else if (o.isWithdrawl && hasActions) {
-          retiros = actionsTotal;
-        } else {
-          const val = Number(o.operationValue || 0);
-          if (val >= 0) ganancia = val;
-          else perdida = Math.abs(val);
-        }
-
-        return {
-          id: o.id || idx,
-          operacion: o.code || `#${idx + 1}`,
-          fecha: new Date(o.operationDate).toLocaleDateString("es-EC"),
-          estado: o.status || "Finalizado",
-          capital, ganancia, perdida, retiros,
-        };
-      });
-  }, [activeOrders]);
+  const summary = useMemo(() => summarizeFinalizedOrders(activeOrders), [activeOrders]);
 
   const totals = useMemo(() => ({
-    capital: tableRows.reduce((acc, r) => acc + Number(r.capital || 0), 0),
-    ganancia: tableRows.reduce((acc, r) => acc + Number(r.ganancia || 0), 0),
-    perdida: tableRows.reduce((acc, r) => acc + Number(r.perdida || 0), 0),
-    retiros: tableRows.reduce((acc, r) => acc + Number(r.retiros || 0), 0),
-  }), [tableRows]);
+    capital: summary.capital,
+    ganancia: summary.ganancia,
+    perdida: summary.perdida,
+    retiros: summary.retiros,
+  }), [summary]);
 
   const balanceCalculado = useMemo(() => {
-    return totals.capital + totals.ganancia - totals.perdida - totals.retiros;
-  }, [totals]);
+    return summary.balance;
+  }, [summary]);
 
   const currentBalance = useMemo(() => balanceCalculado, [balanceCalculado]);
 
@@ -266,22 +245,17 @@ export function useOrdersAggregates({
       const d = new Date(o.operationDate);
       const idx = buckets.findIndex((b) => b.match(d));
       if (idx === -1) return;
-      const actionsTotal = sumActionsCapital(o.operationActions);
-      const hasActions = actionsTotal !== 0;
-      
-      if (o.isCapital && !o.isWithdrawl) {
-        buckets[idx].contrib += hasActions ? actionsTotal : Number(o.operationValue || 0);
-      } else if (o.isWithdrawl && hasActions) {
-        buckets[idx].withdraw += actionsTotal;
-      } else {
-        buckets[idx].profit += Number(o.operationValue || 0);
-      }
+      if (getFinalizedOrderDelta(o) === 0) return;
+      const values = getOrderFinancials(o);
+      if (o.isCapital && !o.isWithdrawl) buckets[idx].contrib += values.delta;
+      else if (values.retiros !== 0) buckets[idx].withdraw += values.delta;
+      else buckets[idx].profit += values.delta;
     });
 
     let equity = 0, netContrib = 0;
     const values = buckets.map((b) => {
-      equity += b.contrib + b.profit - b.withdraw;
-      netContrib += b.contrib - b.withdraw;
+      equity += b.contrib + b.profit + b.withdraw;
+      netContrib += b.contrib + b.withdraw;
       const roi = netContrib > 0 ? (equity / netContrib - 1) * 100 : 0;
       return Number.isFinite(roi) ? roi : 0;
     });
@@ -290,10 +264,10 @@ export function useOrdersAggregates({
   }, [activeOrders, selectedPeriod, selectedYear, selectedMonth, selectedTrimestre, selectedSemestre]);
 
   const roiData = useMemo(() => {
-    const totalGanancia = tableRows.reduce((sum, r) => sum + Number(r.ganancia || 0), 0);
-    const totalPerdida = tableRows.reduce((sum, r) => sum + Number(r.perdida || 0), 0);
+    const totalGanancia = summary.ganancia;
+    const totalPerdida = summary.perdida;
     return { totalGanancia, totalPerdida, avgWin: totalGanancia, avgLoss: totalPerdida };
-  }, [tableRows]);
+  }, [summary]);
 
   return {
     isLoading,

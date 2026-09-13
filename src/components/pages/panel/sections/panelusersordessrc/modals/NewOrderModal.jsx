@@ -78,7 +78,7 @@ export default function NewOrderModal({
             <Button variant="flat" onPress={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button color="primary" className="bg-[#00689B]" onPress={onSave} isDisabled={actions.length === 0}>
+            <Button color="primary" className="bg-[#111727] text-white" onPress={onSave} isDisabled={actions.length === 0}>
               Guardar
             </Button>
           </ModalFooter>
