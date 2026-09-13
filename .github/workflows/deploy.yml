@@ -104,7 +104,9 @@ jobs:
           find "$APP_DIR" -mindepth 1 -maxdepth 1 \
             ! -name .user.ini ! -name .well-known -exec rm -rf {} +
           cp -a "$RELEASE_DIR"/. "$APP_DIR"/
-          find "$APP_DIR" -mindepth 1 ! -name .user.ini -exec chown www:www {} +
+          chown www:www "$APP_DIR"
+          find "$APP_DIR" -mindepth 1 -maxdepth 1 \
+            ! -name .user.ini ! -name .well-known -exec chown -R www:www {} +
 
           test -s "$APP_DIR/index.html"
           curl -kfsS --resolve app.nydaqstock.com:443:127.0.0.1 \
