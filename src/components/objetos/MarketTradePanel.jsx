@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 
 import { TradingService } from "../services/tradingService.js";
 import { useTradingPermission } from "../../hooks/useTradingPermission.js";
+import { formatMarketPrice } from "../../utils/marketPrice.js";
 
 export default function MarketTradePanel({ market }) {
   const [quantity, setQuantity] = useState(0.01);
@@ -59,8 +60,8 @@ export default function MarketTradePanel({ market }) {
   const sellPriceNumber = bid > 0 ? bid : priceNumber || 0;
   const buyPriceNumber = ask > 0 ? ask : priceNumber || 0;
 
-  const sellDisplay = sellPriceNumber ? sellPriceNumber.toFixed(2) : "--";
-  const buyDisplay = buyPriceNumber ? buyPriceNumber.toFixed(2) : "--";
+  const sellDisplay = sellPriceNumber ? formatMarketPrice(sellPriceNumber, market?.symbol) : "--";
+  const buyDisplay = buyPriceNumber ? formatMarketPrice(buyPriceNumber, market?.symbol) : "--";
 
   const { canTrade, reason, requiredCost, capital, mode, refresh } = useTradingPermission({
     quantity,

@@ -33,7 +33,7 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  const primaryColor = "#00689b";
+  const primaryColor = "#111727";
   const countriesSorted = useMemo(
     () => [...(stats.countries || [])].sort((a, b) => b.users - a.users).slice(0, 10),
     [stats.countries]

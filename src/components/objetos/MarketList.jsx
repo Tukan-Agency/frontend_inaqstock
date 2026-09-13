@@ -11,10 +11,12 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import MarketTradePanel from "./MarketTradePanel";
-import { polygonService } from "../services/polygonService";
-import { searchService } from "../services/searchService";
+import { getMarketOverview, searchCatalog } from "../services/marketCatalog";
+import { useLivePrice } from "../../hooks/useLivePrice.js";
+import { useMultiLivePrices } from "../../hooks/useMultiLivePrices.js";
+import { formatMarketPrice } from "../../utils/marketPrice.js";
 
-export default function MarketList({ onSelect }) {
+export default function MarketList({ onSelect, onInitialLoad }) {
   const [searchText, setSearchText] = useState("");
   const [selectedTab, setSelectedTab] = useState("topmovers");
   const [expandedMarket, setExpandedMarket] = useState(null);
@@ -25,6 +27,28 @@ export default function MarketList({ onSelect }) {
     const saved = localStorage.getItem("favorites");
     return saved ? JSON.parse(saved) : [];
   });
+  const {
+    symbol: selectedPriceSymbol,
+    price: selectedPrice,
+    status: selectedPriceStatus,
+  } = useLivePrice(expandedMarket);
+  const cryptoSymbols = useMemo(
+    () => markets.filter((market) => market.symbol.startsWith("X:")).map((market) => market.symbol),
+    [markets]
+  );
+  const { prices: cryptoPrices } = useMultiLivePrices(cryptoSymbols);
+
+  const formatInstrument = (instrument) => ({
+    symbol: instrument.symbol,
+    name: instrument.name,
+    type: instrument.market,
+    market: instrument.market,
+    exchange: instrument.exchange || "",
+    price: null,
+    open: null,
+    change: null,
+    volume: 0,
+  });
 
   const getTodayKey = () => {
     const today = new Date();
@@ -32,80 +56,67 @@ export default function MarketList({ onSelect }) {
   };
 
  
-  // Cargar los 20 mercados desde la IA o cache
+  // Cargar los mercados populares desde el catálogo o la caché.
   useEffect(() => {
     const loadPopularMarkets = async () => {
       try {
         setLoading(true);
         const todayKey = getTodayKey();
-        const cacheData = localStorage.getItem("ai-topmovers");
-        const cacheDate = localStorage.getItem("ai-topmovers-date");
+        const cacheData = localStorage.getItem("catalog-popular-v5");
+        const cacheDate = localStorage.getItem("catalog-popular-date-v5");
 
         if (cacheData && cacheDate === todayKey) {
-          setMarkets(JSON.parse(cacheData));
-          setLoading(false);
-          return;
-        }
-
-        const aiResponse = await searchService.searchSymbol(
-          "dame los 20 mercados y monedas más populares y recomendables hasta el día de hoy"
-        );
-
-        let aiSymbols = [];
-        try {
-          aiSymbols = Array.isArray(aiResponse)
-            ? aiResponse
-            : JSON.parse(aiResponse);
-        } catch {
-          aiSymbols = [];
-        }
-
-        const marketPromises = aiSymbols.map(async (symbol) => {
-          try {
-            const data = await polygonService.getMarketPrice(symbol);
-            const prev = data.results?.[0];
-            return {
-              symbol,
-              name: symbol.replace(/^X:/, ""),
-              type: "crypto",
-              market: "global",
-              exchange: "Polygon.io",
-              price: prev?.c?.toFixed(2) || "N/A",
-              change:
-                prev?.o && prev?.c
-                  ? (((prev.c - prev.o) / prev.o) * 100).toFixed(2)
-                  : "0.00",
-              volume: prev?.v || 0,
-            };
-          } catch {
-            return {
-              symbol,
-              name: symbol.replace(/^X:/, ""),
-              type: "crypto",
-              market: "global",
-              exchange: "Polygon.io",
-              price: "N/A",
-              change: "0.00",
-              volume: 0,
-            };
+          const cachedMarkets = JSON.parse(cacheData);
+          if (Array.isArray(cachedMarkets) && cachedMarkets.length > 0) {
+            setMarkets(cachedMarkets);
+            setLoading(false);
+            return;
           }
-        });
+        }
 
-        const formattedMarkets = await Promise.all(marketPromises);
+        const instruments = await searchCatalog();
+        if (!instruments.length) throw new Error("El catálogo no devolvió mercados populares");
+
+        const overview = await getMarketOverview(instruments.map((instrument) => instrument.symbol));
+        const prices = new Map(overview.map((item) => [item.symbol, item]));
+        const formattedMarkets = instruments.map((instrument) => ({
+          ...formatInstrument(instrument),
+          ...prices.get(instrument.symbol),
+        }));
         setMarkets(formattedMarkets);
-        localStorage.setItem("ai-topmovers", JSON.stringify(formattedMarkets));
-        localStorage.setItem("ai-topmovers-date", todayKey);
+        localStorage.setItem("catalog-popular-v5", JSON.stringify(formattedMarkets));
+        localStorage.setItem("catalog-popular-date-v5", todayKey);
         setError(null);
       } catch (err) {
         console.error(err);
         setError("Error cargando mercados populares.");
       } finally {
         setLoading(false);
+        onInitialLoad?.();
       }
     };
 
     loadPopularMarkets();
   }, []);
+
+  useEffect(() => {
+    if (selectedPriceSymbol !== expandedMarket || !Number.isFinite(selectedPrice)) return;
+    setMarkets((current) => current.map((market) => {
+      if (market.symbol !== expandedMarket) return market;
+      const change = market.open > 0 ? ((selectedPrice - market.open) / market.open) * 100 : market.change;
+      return { ...market, price: selectedPrice, change };
+    }));
+  }, [expandedMarket, selectedPrice, selectedPriceSymbol]);
+
+  useEffect(() => {
+    if (!Object.keys(cryptoPrices).length) return;
+    setMarkets((current) => current.map((market) => {
+      const price = cryptoPrices[market.symbol];
+      if (!Number.isFinite(price)) return market;
+      const change = market.open > 0 ? ((price - market.open) / market.open) * 100 : market.change;
+      return { ...market, price, change };
+    }));
+  }, [cryptoPrices]);
 
   // Guardar favoritos
   useEffect(() => {
@@ -124,67 +135,32 @@ export default function MarketList({ onSelect }) {
     }
   }, [error]);
 
-  // --- BUSCAR CON IA ---
-  const handleSearchWithAI = async () => {
+  const handleSearch = async () => {
     if (!searchText.trim()) {
       // Si está vacío, restaurar el cache
-      const cached = localStorage.getItem("ai-topmovers");
+      const cached = localStorage.getItem("catalog-popular-v5");
       if (cached) setMarkets(JSON.parse(cached));
       return;
     }
 
     try {
       setLoading(true);
-      const aiResponse = await searchService.searchSymbol(searchText);
-      let aiSymbols = [];
+      const instruments = await searchCatalog(searchText);
+      if (!instruments.length) addToast({ title: "Sin resultados", description: "No encontramos instrumentos para esa búsqueda.", color: "default" });
 
-      try {
-        aiSymbols = Array.isArray(aiResponse)
-          ? aiResponse
-          : JSON.parse(aiResponse);
-      } catch {
-        aiSymbols = [aiResponse];
-      }
-
-      const marketPromises = aiSymbols.map(async (symbol) => {
-        try {
-          const data = await polygonService.getMarketPrice(symbol);
-          const prev = data.results?.[0];
-          return {
-            symbol,
-            name: symbol.replace(/^X:/, ""),
-            type: "crypto",
-            market: "global",
-            exchange: "Polygon.io",
-            price: prev?.c?.toFixed(2) || "N/A",
-            change:
-              prev?.o && prev?.c
-                ? (((prev.c - prev.o) / prev.o) * 100).toFixed(2)
-                : "0.00",
-            volume: prev?.v || 0,
-          };
-        } catch {
-          return {
-            symbol,
-            name: symbol.replace(/^X:/, ""),
-            type: "crypto",
-            market: "global",
-            exchange: "Polygon.io",
-            price: "N/A",
-            change: "0.00",
-            volume: 0,
-          };
-        }
-      });
-
-      const newMarkets = await Promise.all(marketPromises);
+      const overview = await getMarketOverview(instruments.map((instrument) => instrument.symbol));
+      const prices = new Map(overview.map((item) => [item.symbol, item]));
+      const newMarkets = instruments.map((instrument) => ({
+        ...formatInstrument(instrument),
+        ...prices.get(instrument.symbol),
+      }));
       setMarkets(newMarkets);
     } catch (err) {
       console.error(err);
       addToast({
         title: "Error en búsqueda",
-        description: "No se pudo realizar la búsqueda con IA.",
-        color: "Danger",
+        description: "No se pudo consultar el catálogo de instrumentos.",
+        color: "danger",
         duration: 3500,
       });
     } finally {
@@ -225,9 +201,9 @@ export default function MarketList({ onSelect }) {
 
   // --- Render ---
   return (
-    <Card className="min-h-[470px] border border-solid border-[#00689b9e]">
-      <CardBody className="p-0">
-        <div className="p-2 border-b border-[#00689b9e]">
+    <Card className="h-[400px] max-h-full min-h-0 overflow-hidden border border-solid border-[#11172766] dark:border-[#18A77766] md:h-full">
+      <CardBody className="flex h-full flex-col p-0">
+        <div className="border-b border-[#11172766] p-2 dark:border-[#18A77766]">
           <Tabs
             selectedKey={selectedTab}
             onSelectionChange={setSelectedTab}
@@ -262,7 +238,7 @@ export default function MarketList({ onSelect }) {
               startContent={<Icon icon="material-symbols:search" />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearchWithAI()}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               className="w-full pr-10"
             />
             <Button
@@ -271,7 +247,7 @@ export default function MarketList({ onSelect }) {
               variant="flat"
               color="secondary"
               className="absolute right-1 top-1/2 -translate-y-1/2 bg"
-              onClick={handleSearchWithAI}
+              onClick={handleSearch}
               aria-label="Buscar"
             >
               <Icon icon="mdi:magnify" width="20" height="20" />
@@ -279,7 +255,7 @@ export default function MarketList({ onSelect }) {
           </div>
         </div>
 
-        <div className="overflow-y-auto h-[calc(470px-120px)]">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <Card className="w-full space-y-5 shadow-none" radius="lg">
@@ -298,7 +274,7 @@ export default function MarketList({ onSelect }) {
               return (
                 <div key={market.symbol}>
                   <div
-                    className="flex items-center justify-between p-3 hover:bg-default-100 cursor-pointer border-b border-[#00689b9e]"
+                    className="flex cursor-pointer items-center justify-between border-b border-[#11172766] p-3 hover:bg-default-100 dark:border-[#18A77766]"
                     onClick={() => handleMarketClick(market.symbol)}
                   >
                     <div>
@@ -314,9 +290,9 @@ export default function MarketList({ onSelect }) {
                     <div className="flex items-center gap-3">
                       <div className="text-right text-sm">
                         <div className="font-medium">
-                          {market.price === "N/A" ? "-" : `$${market.price}`}
+                          {market.price == null ? "--" : formatMarketPrice(market.price, market.symbol)}
                         </div>
-                        <div
+                        {market.change != null ? <div
                           className={`text-xs ${
                             parseFloat(market.change) >= 0
                               ? "text-green-500"
@@ -324,8 +300,12 @@ export default function MarketList({ onSelect }) {
                           }`}
                         >
                           {parseFloat(market.change) >= 0 ? "+" : ""}
-                          {market.change}%
-                        </div>
+                          {Number(market.change).toFixed(2)}%
+                        </div> : (
+                          <div className="text-xs text-default-400">
+                            {expandedMarket === market.symbol && selectedPriceStatus !== "live" ? "Consultando..." : "Selecciona para cotizar"}
+                          </div>
+                        )}
                       </div>
 
                       <Button

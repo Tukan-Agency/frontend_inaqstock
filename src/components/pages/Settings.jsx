@@ -1,44 +1,74 @@
 import React, { useState, useEffect, useRef } from "react";
 import { SettingsService } from "../../components/services/settingsService.js";
-import { Card, CardBody, CardHeader, Input, Button, Divider, Spinner, Image, addToast } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  Input,
+  Button,
+  Spinner,
+  Image,
+  Select,
+  SelectItem,
+  addToast,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useSettings } from "../../context/SettingsContext.jsx";
+import { fixAssetUrl, writeBrandingCache } from "../../utils/branding.js";
+
+function SecretInput({ label, value, onChange, description }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <Input
+      label={label}
+      value={value}
+      onChange={onChange}
+      variant="bordered"
+      type={visible ? "text" : "password"}
+      description={description}
+      endContent={
+        <button
+          type="button"
+          className="focus:outline-none"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? "Ocultar" : "Mostrar"}
+        >
+          <Icon
+            icon={visible ? "solar:eye-closed-bold" : "solar:eye-bold"}
+            width={20}
+            className="text-default-400"
+          />
+        </button>
+      }
+    />
+  );
+}
 
 export default function Settings() {
-  const { refreshSettings } = useSettings();
+  const { refreshSettings, refreshBranding } = useSettings();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // Referencias para los inputs de archivo
   const lightInputRef = useRef(null);
   const darkInputRef = useRef(null);
 
-  // Estado del formulario de textos
   const [formData, setFormData] = useState({
     platformTitle: "",
-    apiKeys: { resend: "", polygon: "", openRouter: "" }
+    logoSize: "100",
+    logoSizeUnit: "px",
+    apiKeys: { resend: "", polygon: "", openRouter: "" },
+    smtp: { host: "", port: "465", user: "", pass: "", from: "" },
   });
-  
-  // Estados para URLs (lo que viene del backend)
+
   const [logoLightUrl, setLogoLightUrl] = useState("");
   const [logoDarkUrl, setLogoDarkUrl] = useState("");
-
-  // Estados para archivos seleccionados (lo que vas a subir)
   const [fileLight, setFileLight] = useState(null);
   const [fileDark, setFileDark] = useState(null);
-  
-  // Estados para previews locales
   const [previewLight, setPreviewLight] = useState(null);
   const [previewDark, setPreviewDark] = useState(null);
 
-  useEffect(() => { loadSettings(); }, []);
-
-  const getFullUrl = (path) => {
-    if (!path) return "";
-    if (path.startsWith("http")) return path;
-    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-    return `${baseUrl.replace('/api', '')}${path}`;
-  };
+  useEffect(() => {
+    loadSettings();
+  }, []);
 
   const loadSettings = async () => {
     try {
@@ -47,15 +77,23 @@ export default function Settings() {
       if (res.ok && res.data) {
         setFormData({
           platformTitle: res.data.platformTitle || "",
+          logoSize: String(res.data.logoSize || 100),
+          logoSizeUnit: res.data.logoSizeUnit === "%" ? "%" : "px",
           apiKeys: {
             resend: res.data.resendApiKey || "",
             polygon: res.data.polygonApiKey || "",
-            openRouter: res.data.openRouterApiKey || ""
-          }
+            openRouter: res.data.openRouterApiKey || "",
+          },
+          smtp: {
+            host: res.data.smtpHost || "",
+            port: String(res.data.smtpPort || 465),
+            user: res.data.smtpUser || "",
+            pass: res.data.smtpPass || "",
+            from: res.data.emailFrom || "",
+          },
         });
-
-        if (res.data.logoLight) setLogoLightUrl(getFullUrl(res.data.logoLight));
-        if (res.data.logoDark) setLogoDarkUrl(getFullUrl(res.data.logoDark));
+        if (res.data.logoLight) setLogoLightUrl(fixAssetUrl(res.data.logoLight));
+        if (res.data.logoDark) setLogoDarkUrl(fixAssetUrl(res.data.logoDark));
       }
     } catch (error) {
       console.error("Error cargando ajustes:", error);
@@ -69,44 +107,39 @@ export default function Settings() {
     }
   };
 
-  const handleChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      platformTitle: field === "platformTitle" ? value : prev.platformTitle,
-      apiKeys: field !== "platformTitle" ? { ...prev.apiKeys, [field]: value } : prev.apiKeys
-    }));
+  const handleChange = (section, field, value) => {
+    setFormData((prev) => {
+      if (section === "root") return { ...prev, [field]: value };
+      return { ...prev, [section]: { ...prev[section], [field]: value } };
+    });
   };
 
-  // Manejo genérico de selección de archivo
   const handleFileSelect = (e, type) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) { 
-        addToast({
-          title: "Archivo muy grande",
-          description: "El logo no debe pesar más de 2MB",
-          color: "warning",
-        });
-        return;
-      }
-
-      const objectUrl = URL.createObjectURL(file);
-
-      if (type === 'light') {
-        setFileLight(file);
-        setPreviewLight(objectUrl);
-      } else {
-        setFileDark(file);
-        setPreviewDark(objectUrl);
-      }
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      addToast({
+        title: "Archivo muy grande",
+        description: "El logo no debe pesar más de 2MB",
+        color: "warning",
+      });
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    if (type === "light") {
+      setFileLight(file);
+      setPreviewLight(objectUrl);
+    } else {
+      setFileDark(file);
+      setPreviewDark(objectUrl);
     }
   };
 
   const handleRemoveLocal = (type) => {
-    if (type === 'light') {
+    if (type === "light") {
       setFileLight(null);
       setPreviewLight(null);
-      setLogoLightUrl(""); 
+      setLogoLightUrl("");
     } else {
       setFileDark(null);
       setPreviewDark(null);
@@ -118,40 +151,43 @@ export default function Settings() {
     try {
       setSaving(true);
       const dataToSend = new FormData();
-      
-      // Textos
       dataToSend.append("platformTitle", formData.platformTitle);
+      dataToSend.append("logoSize", formData.logoSize);
+      dataToSend.append("logoSizeUnit", formData.logoSizeUnit);
       dataToSend.append("resendApiKey", formData.apiKeys.resend);
       dataToSend.append("polygonApiKey", formData.apiKeys.polygon);
       dataToSend.append("openRouterApiKey", formData.apiKeys.openRouter);
-
-      // Archivos (solo si existen)
+      dataToSend.append("smtpHost", formData.smtp.host);
+      dataToSend.append("smtpPort", formData.smtp.port);
+      dataToSend.append("smtpUser", formData.smtp.user);
+      dataToSend.append("smtpPass", formData.smtp.pass);
+      dataToSend.append("emailFrom", formData.smtp.from);
       if (fileLight) dataToSend.append("logoLight", fileLight);
       if (fileDark) dataToSend.append("logoDark", fileDark);
 
       const res = await SettingsService.updateSettings(dataToSend);
-      
       if (res.ok) {
         addToast({
           title: "Guardado",
           description: "Ajustes actualizados correctamente",
           color: "success",
         });
-
-        // Actualizar estados locales con la respuesta del server
-        if (res.data.logoLight) {
-           setLogoLightUrl(getFullUrl(res.data.logoLight));
-           setPreviewLight(null);
-           setFileLight(null);
-        }
-        if (res.data.logoDark) {
-           setLogoDarkUrl(getFullUrl(res.data.logoDark));
-           setPreviewDark(null);
-           setFileDark(null);
-        }
-
-        // Refrescar contexto global para que el Navbar se actualice solo
-        refreshSettings();
+        const light = res.data.logoLight ? fixAssetUrl(res.data.logoLight) : logoLightUrl;
+        const dark = res.data.logoDark ? fixAssetUrl(res.data.logoDark) : logoDarkUrl;
+        if (light) setLogoLightUrl(light);
+        if (dark) setLogoDarkUrl(dark);
+        setPreviewLight(null);
+        setPreviewDark(null);
+        setFileLight(null);
+        setFileDark(null);
+        writeBrandingCache({
+          platformTitle: formData.platformTitle,
+          logoLight: light,
+          logoDark: dark,
+          logoSize: Number(formData.logoSize) || 100,
+          logoSizeUnit: formData.logoSizeUnit,
+        });
+        await Promise.all([refreshSettings?.(), refreshBranding?.()]);
       }
     } catch (error) {
       console.error("Error guardando ajustes:", error);
@@ -165,113 +201,235 @@ export default function Settings() {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-full"><Spinner size="lg" /></div>;
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  const previewSizeStyle =
+    formData.logoSizeUnit === "%"
+      ? { width: `${formData.logoSize}%`, height: "auto" }
+      : { width: Number(formData.logoSize) || 100, height: "auto" };
 
   return (
     <div className="w-full p-4 md:p-8">
-      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
+      <h1 className="mb-6 flex items-center gap-2 text-2xl font-bold">
         <Icon icon="solar:settings-bold-duotone" width={28} />
         Ajustes de la Plataforma
       </h1>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        
-        {/* === COLUMNA IZQUIERDA: APARIENCIA === */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="flex flex-col gap-6">
           <Card className="border border-default-200">
-            <CardHeader className="font-semibold text-lg pb-0">General</CardHeader>
+            <CardHeader className="pb-0 text-lg font-semibold">General</CardHeader>
             <CardBody className="gap-4">
-              <div>
-                <label className="text-sm text-default-500 mb-1 block">Nombre de la Plataforma</label>
-                <Input 
-                  value={formData.platformTitle}
-                  onChange={(e) => handleChange("platformTitle", e.target.value)}
-                  placeholder="Ej: InaqStock Pro"
+              <Input
+                label="Nombre de la Plataforma"
+                value={formData.platformTitle}
+                onChange={(e) => handleChange("root", "platformTitle", e.target.value)}
+                placeholder="Ej: Nydaqstock"
+                variant="bordered"
+              />
+            </CardBody>
+          </Card>
+
+          <Card className="border border-default-200">
+            <CardHeader className="pb-0 text-lg font-semibold">Tamaño del logo</CardHeader>
+            <CardBody className="gap-4">
+              <div className="grid grid-cols-[1fr_120px] gap-3">
+                <Input
+                  label="Tamaño"
+                  type="number"
+                  min={8}
+                  max={formData.logoSizeUnit === "%" ? 100 : 1000}
+                  value={formData.logoSize}
+                  onChange={(e) => handleChange("root", "logoSize", e.target.value)}
                   variant="bordered"
+                  description={formData.logoSizeUnit === "%" ? "Porcentaje del contenedor (8–100)" : "Píxeles (8–1000)"}
                 />
+                <Select
+                  label="Unidad"
+                  selectedKeys={[formData.logoSizeUnit]}
+                  onSelectionChange={(keys) => {
+                    const unit = Array.from(keys)[0] || "px";
+                    handleChange("root", "logoSizeUnit", unit);
+                  }}
+                  variant="bordered"
+                >
+                  <SelectItem key="px">px</SelectItem>
+                  <SelectItem key="%">%</SelectItem>
+                </Select>
+              </div>
+              <div className="rounded-xl border border-dashed border-default-300 bg-default-50 p-4">
+                <p className="mb-2 text-xs text-default-500">Vista previa del tamaño</p>
+                <div className="flex h-24 items-center justify-center overflow-hidden">
+                  {(previewLight || logoLightUrl || previewDark || logoDarkUrl) ? (
+                    <img
+                      src={previewLight || logoLightUrl || previewDark || logoDarkUrl}
+                      alt="Preview tamaño"
+                      style={previewSizeStyle}
+                      className="object-contain"
+                    />
+                  ) : (
+                    <span className="text-xs text-default-400">Sube un logo para previsualizar</span>
+                  )}
+                </div>
               </div>
             </CardBody>
           </Card>
 
-          {/* LOGO MODO CLARO */}
           <Card className="border border-default-200">
-            <CardHeader className="font-semibold text-lg pb-0">Logo Modo Claro</CardHeader>
+            <CardHeader className="pb-0 text-lg font-semibold">Logo modo claro</CardHeader>
             <CardBody>
-              <p className="text-xs text-default-400 mb-3">
-                Este logo se mostrará cuando el usuario use el tema claro (fondo blanco).
-              </p>
               <div className="flex items-center gap-4">
-                {/* Fondo GRIS CLARO para simular el tema light */}
-                <div className="relative w-24 h-24 rounded-xl border border-dashed border-default-300 flex items-center justify-center overflow-hidden bg-gray-100">
+                <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border border-dashed border-default-300 bg-gray-100">
                   {previewLight || logoLightUrl ? (
-                    <Image src={previewLight || logoLightUrl} alt="Logo Light" className="w-full h-full object-contain p-2" />
+                    <Image
+                      src={previewLight || logoLightUrl}
+                      alt="Logo Light"
+                      className="h-full w-full object-contain p-2"
+                    />
                   ) : (
                     <Icon icon="solar:gallery-wide-linear" className="text-default-400" width={32} />
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Button size="sm" color="primary" variant="flat" onClick={() => lightInputRef.current.click()}>
-                    Subir Logo Light
+                  <Button size="sm" color="primary" variant="flat" onPress={() => lightInputRef.current.click()}>
+                    Subir logo light
                   </Button>
                   {(previewLight || logoLightUrl) && (
-                    <Button size="sm" color="danger" variant="light" onClick={() => handleRemoveLocal('light')}>
-                      Eliminar
+                    <Button size="sm" color="danger" variant="light" onPress={() => handleRemoveLocal("light")}>
+                      Quitar
                     </Button>
                   )}
-                  <input type="file" ref={lightInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileSelect(e, 'light')} />
+                  <input
+                    type="file"
+                    ref={lightInputRef}
+                    className="hidden"
+                    accept="image/png,image/jpeg"
+                    onChange={(e) => handleFileSelect(e, "light")}
+                  />
                 </div>
               </div>
             </CardBody>
           </Card>
 
-          {/* LOGO MODO OSCURO */}
           <Card className="border border-default-200">
-            <CardHeader className="font-semibold text-lg pb-0">Logo Modo Oscuro</CardHeader>
+            <CardHeader className="pb-0 text-lg font-semibold">Logo modo oscuro</CardHeader>
             <CardBody>
-              <p className="text-xs text-default-400 mb-3">
-                Este logo se mostrará cuando el usuario use el tema oscuro (fondo negro).
-              </p>
               <div className="flex items-center gap-4">
-                {/* Fondo NEGRO/OSCURO para simular el tema dark */}
-                <div className="relative w-24 h-24 rounded-xl border border-dashed border-default-300 flex items-center justify-center overflow-hidden bg-gray-900">
+                <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border border-dashed border-default-300 bg-gray-900">
                   {previewDark || logoDarkUrl ? (
-                    <Image src={previewDark || logoDarkUrl} alt="Logo Dark" className="w-full h-full object-contain p-2" />
+                    <Image
+                      src={previewDark || logoDarkUrl}
+                      alt="Logo Dark"
+                      className="h-full w-full object-contain p-2"
+                    />
                   ) : (
                     <Icon icon="solar:gallery-wide-linear" className="text-default-400" width={32} />
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Button size="sm" color="secondary" variant="flat" onClick={() => darkInputRef.current.click()}>
-                    Subir Logo Dark
+                  <Button size="sm" color="secondary" variant="flat" onPress={() => darkInputRef.current.click()}>
+                    Subir logo dark
                   </Button>
                   {(previewDark || logoDarkUrl) && (
-                    <Button size="sm" color="danger" variant="light" onClick={() => handleRemoveLocal('dark')}>
-                      Eliminar
+                    <Button size="sm" color="danger" variant="light" onPress={() => handleRemoveLocal("dark")}>
+                      Quitar
                     </Button>
                   )}
-                  <input type="file" ref={darkInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileSelect(e, 'dark')} />
+                  <input
+                    type="file"
+                    ref={darkInputRef}
+                    className="hidden"
+                    accept="image/png,image/jpeg"
+                    onChange={(e) => handleFileSelect(e, "dark")}
+                  />
                 </div>
               </div>
             </CardBody>
           </Card>
         </div>
 
-        {/* === COLUMNA DERECHA: API KEYS === */}
-        <Card className="border border-default-200 h-fit">
-          <CardHeader className="font-semibold text-lg pb-0">Configuración de APIs</CardHeader>
-          <CardBody className="gap-5">
-            <Input label="Resend API Key" value={formData.apiKeys.resend} onChange={(e) => handleChange("resend", e.target.value)} variant="bordered" type="password" />
-            <Input label="Polygon.io API Key" value={formData.apiKeys.polygon} onChange={(e) => handleChange("polygon", e.target.value)} variant="bordered" type="password" />
-            <Input label="OpenRouter API Key" value={formData.apiKeys.openRouter} onChange={(e) => handleChange("openRouter", e.target.value)} variant="bordered" type="password" />
-          </CardBody>
-        </Card>
+        <div className="flex flex-col gap-6">
+          <Card className="border border-default-200">
+            <CardHeader className="pb-0 text-lg font-semibold">APIs de mercado</CardHeader>
+            <CardBody className="gap-5">
+              <SecretInput
+                label="Polygon / Massive API Key"
+                value={formData.apiKeys.polygon}
+                onChange={(e) => handleChange("apiKeys", "polygon", e.target.value)}
+                description="Se usa para precios e historiales. Déjala con •••• si no quieres cambiarla."
+              />
+              <SecretInput
+                label="OpenRouter API Key (opcional)"
+                value={formData.apiKeys.openRouter}
+                onChange={(e) => handleChange("apiKeys", "openRouter", e.target.value)}
+              />
+              <SecretInput
+                label="Resend API Key (legado)"
+                value={formData.apiKeys.resend}
+                onChange={(e) => handleChange("apiKeys", "resend", e.target.value)}
+              />
+            </CardBody>
+          </Card>
 
+          <Card className="border border-default-200">
+            <CardHeader className="pb-0 text-lg font-semibold">Correo SMTP</CardHeader>
+            <CardBody className="gap-4">
+              <Input
+                label="Host SMTP"
+                value={formData.smtp.host}
+                onChange={(e) => handleChange("smtp", "host", e.target.value)}
+                placeholder="mail.tudominio.com"
+                variant="bordered"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Puerto"
+                  value={formData.smtp.port}
+                  onChange={(e) => handleChange("smtp", "port", e.target.value)}
+                  variant="bordered"
+                />
+                <Input
+                  label="Usuario"
+                  value={formData.smtp.user}
+                  onChange={(e) => handleChange("smtp", "user", e.target.value)}
+                  variant="bordered"
+                />
+              </div>
+              <SecretInput
+                label="Contraseña SMTP"
+                value={formData.smtp.pass}
+                onChange={(e) => handleChange("smtp", "pass", e.target.value)}
+                description="Déjala con •••• si no quieres rotarla."
+              />
+              <Input
+                label="Remitente (From)"
+                value={formData.smtp.from}
+                onChange={(e) => handleChange("smtp", "from", e.target.value)}
+                placeholder="Nydaqstock <noreply@tudominio.com>"
+                variant="bordered"
+              />
+            </CardBody>
+          </Card>
+        </div>
       </div>
 
       <div className="mt-8 flex justify-end pb-10">
-         <Button color="primary" size="lg" className="font-semibold px-8" isLoading={saving} onClick={handleSubmit} startContent={!saving && <Icon icon="solar:diskette-bold" />}>
-           Guardar Cambios
-         </Button>
+        <Button
+          color="primary"
+          size="lg"
+          className="px-8 font-semibold"
+          isLoading={saving}
+          onPress={handleSubmit}
+          startContent={!saving && <Icon icon="solar:diskette-bold" />}
+        >
+          Guardar cambios
+        </Button>
       </div>
     </div>
   );

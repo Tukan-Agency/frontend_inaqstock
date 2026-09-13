@@ -18,14 +18,18 @@ import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import UserDetailsModal from "./UserDetaiIsModal .jsx";
 import UserEditModal from "./UserEditModal.jsx";
+import CreateUserModal from "./CreateUserModal.jsx";
 import {
   listAllUsers,
   updateUserAdmin,
   deleteUserAdmin,
+  impersonateUser,
+  createUserAdmin,
 } from "../../../services/users.service.js";
 import { listUserOrders } from "../../../services/orders.service.js";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { summarizeFinalizedOrders } from "../../../../utils/orderFinance.js";
 
 // -------- Helpers --------
 function normalize(text) {
@@ -118,6 +122,8 @@ export default function AdminUsuarios() {
   const [selected, setSelected] = useState(null);
   const [openDetails, setOpenDetails] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
+  const [openCreate, setOpenCreate] = useState(false);
+  const [impersonatingId, setImpersonatingId] = useState(null);
 
   // PDF
   const [isPdfRendering, setIsPdfRendering] = useState(false);
@@ -321,6 +327,80 @@ export default function AdminUsuarios() {
     navigate(`/panel/usuarios/${u.id}/ordenes`, { state: { user: u } });
   };
 
+  const handleCreateUser = async (payload) => {
+    try {
+      const result = await createUserAdmin(payload);
+      const created = result.user;
+      const row = {
+        ...created,
+        id: created.id || created._id,
+        contactNumber: String(created.contactNumber ?? ""),
+        whatsapp: String(created.whatsapp ?? ""),
+        currency: {
+          code: created.currency?.code || created.currency?.name || "USD",
+          name: created.currency?.name || "USD",
+        },
+      };
+      row.searchKey = buildSearchKey(row);
+      setUsers((current) => [row, ...current]);
+
+      addToast({
+        title: "Usuario creado",
+        description:
+          payload.sendCredentials && result.emailSent === false
+            ? "La cuenta fue creada, pero no se pudo enviar el correo."
+            : payload.sendCredentials
+              ? "La cuenta y las credenciales fueron enviadas correctamente."
+              : "La cuenta fue creada correctamente.",
+        color: payload.sendCredentials && result.emailSent === false ? "warning" : "success",
+        duration: 3500,
+      });
+      return result;
+    } catch (error) {
+      addToast({
+        title: "No se pudo crear el usuario",
+        description: String(error?.message || error),
+        color: "danger",
+        duration: 3500,
+      });
+      throw error;
+    }
+  };
+
+  const handleImpersonate = async (u) => {
+    const confirmed = window.confirm(
+      `¿Cerrar la sesión administrativa e iniciar como ${u.name} ${u.surname}?`
+    );
+    if (!confirmed) return;
+
+    const userWindow = window.open("about:blank", "_blank");
+    if (!userWindow) {
+      addToast({
+        title: "Ventana bloqueada",
+        description: "Permite ventanas emergentes para iniciar como el usuario.",
+        color: "warning",
+      });
+      return;
+    }
+
+    try {
+      setImpersonatingId(u.id);
+      await impersonateUser(u.id);
+      userWindow.opener = null;
+      userWindow.location.replace(`${window.location.origin}/operar`);
+      window.location.replace("/");
+    } catch (e) {
+      userWindow.close();
+      addToast({
+        title: "No se pudo iniciar la sesión",
+        description: String(e?.message || e),
+        color: "danger",
+      });
+    } finally {
+      setImpersonatingId(null);
+    }
+  };
+
   // ========= Descargar PDF igual que PanelUserOrders, pero desde aquí =========
   const handlePDF = async (u) => {
     try {
@@ -465,19 +545,12 @@ export default function AdminUsuarios() {
   }, [pdfTableRows]);
 
   const pdfCurrentBalance = useMemo(() => {
-    let balance = 0;
-    (pdfOrders || []).forEach((order) => {
-      if (order.isCapital) {
-        balance += sumActionsCapital(order.operationActions);
-      }
-      balance += Number(order.operationValue || 0);
-    });
-    return balance;
+    return summarizeFinalizedOrders(pdfOrders).balance;
   }, [pdfOrders]);
 
   // ========= Skeletons =========
-  const SkeletonRow = ({ cells = 11 }) => (
-    <div className="grid grid-cols-11 gap-3 w-full px-3 py-2">
+  const SkeletonRow = ({ cells = 12 }) => (
+    <div className="grid grid-cols-12 gap-3 w-full px-3 py-2">
       {Array.from({ length: cells }).map((_, i) => (
         <Skeleton key={i} className="h-5 rounded-md" />
       ))}
@@ -488,11 +561,21 @@ export default function AdminUsuarios() {
     <div className="p-6">
       <Card className="shadow-none rounded-3xl">
         <CardBody className="p-6 space-y-4">
-          <div className="text-sm text-default-500 flex items-center gap-2">
-            <Icon icon="mdi:home-outline" width={18} />
-            <span>Administrador</span>
-            <Icon icon="mdi:chevron-right" width={16} />
-            <span className="text-default-700 font-medium">Lista de clientes</span>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="text-sm text-default-500 flex items-center gap-2">
+              <Icon icon="mdi:home-outline" width={18} />
+              <span>Administrador</span>
+              <Icon icon="mdi:chevron-right" width={16} />
+              <span className="text-default-700 font-medium">Lista de clientes</span>
+            </div>
+            <Button
+              color="primary"
+              onPress={() => setOpenCreate(true)}
+              startContent={<Icon icon="mdi:account-plus-outline" width={19} />}
+              className="font-medium"
+            >
+              Nuevo usuario
+            </Button>
           </div>
 
           <div className="max-w-md">
@@ -568,6 +651,7 @@ export default function AdminUsuarios() {
               <TableColumn key="more">Ver Más</TableColumn>
               <TableColumn key="edit">Editar</TableColumn>
               <TableColumn key="orders">Ver Órdenes</TableColumn>
+              <TableColumn key="loginAs">Iniciar como</TableColumn>
               <TableColumn key="pdf">Descargar PDF</TableColumn>
               <TableColumn key="delete">Eliminar usuario</TableColumn>
             </TableHeader>
@@ -577,8 +661,8 @@ export default function AdminUsuarios() {
                 loading ? (
                   <div className="w-full py-3">
                     {/* Cabecera skeleton */}
-                    <div className="grid grid-cols-11 gap-3 px-3 mb-3">
-                      {Array.from({ length: 11 }).map((_, i) => (
+                    <div className="grid grid-cols-12 gap-3 px-3 mb-3">
+                      {Array.from({ length: 12 }).map((_, i) => (
                         <Skeleton key={i} className="h-4 w-full rounded-md" />
                       ))}
                     </div>
@@ -697,6 +781,23 @@ export default function AdminUsuarios() {
                         radius="full"
                         size="sm"
                         variant="flat"
+                        color="primary"
+                        className="text-default-900"
+                        isLoading={impersonatingId === u.id}
+                        isDisabled={u.role === 1 || impersonatingId !== null}
+                        onPress={() => handleImpersonate(u)}
+                        aria-label={`Iniciar sesión como ${u.name} ${u.surname}`}
+                        title="Iniciar como usuario"
+                      >
+                        <Icon icon="mdi:login-variant" width={18} />
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        isIconOnly
+                        radius="full"
+                        size="sm"
+                        variant="flat"
                         color="danger"
                         className="text-default-900"
                         onPress={() => handlePDF(u)}
@@ -737,6 +838,11 @@ export default function AdminUsuarios() {
         onClose={() => setOpenEdit(false)}
         user={selected}
         onSave={handleSaveEdit}
+      />
+      <CreateUserModal
+        open={openCreate}
+        onClose={() => setOpenCreate(false)}
+        onCreate={handleCreateUser}
       />
 
       {/* Contenido PDF oculto */}
